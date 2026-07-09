@@ -107,6 +107,8 @@
   .section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 2px 0 18px; }
   .section-title h2 { font-family: var(--serif); font-weight: 700; margin: 0; font-size: 24px; color: var(--rose); }
   .hint { color: var(--muted); font-size: 12.5px; }
+  .table-note { font-size: 12px; color: var(--muted); margin: 14px 0 0; line-height: 1.5; }
+  .table-note b { color: var(--ink); font-weight: 600; }
 
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; min-width: 580px; }
@@ -304,6 +306,8 @@
       </table>
     </div>
 
+    <p class="table-note" id="refNote"></p>
+
     <div class="toolbar">
       <button id="refreshBtn">Refresh price</button>
       <button id="resetBtn" class="ghost">Reset quantities</button>
@@ -430,6 +434,13 @@
   var FX_API_KEY = "";
   var FX_CCYS = ["CHF", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "HKD", "SGD", "INR"];
 
+  // Preferred single-source LIVE feed: a free metals.dev API key (metals.dev —
+  // ≤60s, CORS). One call returns the live gold price AND live FX for every
+  // currency, so the CHF kilobar becomes a genuine live XAU/USD × USD/CHF cross
+  // (Bloomberg's XAUCHF method). Left blank, the page uses the free gold-api +
+  // ECB-reference chain below. Mind your plan's request quota vs the poll rate.
+  var METALS_API_KEY = "";
+
   // The two units we track. Each is priced in its native REFERENCE currency:
   // the troy ounce in USD (LBMA/COMEX benchmark) and the 1 kg bar in CHF
   // (Swiss bullion-desk convention). Everything derives from the live USD/oz spot.
@@ -442,6 +453,7 @@
   var lastPriceUsd = null;    // previous spot, for the up/down delta
   var fxRates = { USD: 1 };   // USD -> currency
   var fxMeta = { label: "—", asof: "", live: false };
+  var metalsFxOk = false;     // true when metals.dev supplied live FX this cycle
   var selectedCcy = "CHF";    // account currency (top selector)
 
   // --- formatting ---
@@ -520,6 +532,15 @@
       note.className = "ccy-note";
       note.textContent = "";
     }
+
+    // Explain the CHF reference: it is a cross, and how fresh the FX leg is.
+    var refNote = document.getElementById("refNote");
+    var fxFresh = fxMeta.live ? "a <b>live</b> USD/CHF" : "an <b>end-of-day</b> USD/CHF (ECB reference)";
+    refNote.innerHTML =
+      "The 1 kg bar&rsquo;s CHF price is the market convention: live gold (USD/oz) &times; " + fxFresh +
+      " rate — the same cross as Bloomberg&rsquo;s XAUCHF. There is no separate CHF gold market." +
+      (fxMeta.live ? "" : " Add a live-FX key to make the CHF leg intraday too.");
+
     recalc();
     updateAnalyzer();
   }
@@ -770,6 +791,8 @@
     return list;
   }
   function fetchFx() {
+    // metals.dev already delivered live FX alongside the gold price this cycle.
+    if (METALS_API_KEY && metalsFxOk) return;
     var sources = fxSources();
     var i = 0;
     (function tryNext() {
@@ -790,29 +813,61 @@
   }
 
   // --- live gold price ---
-  function fetchPrice() {
+  function onPriceOk(price, whenText) {
+    applyPrice(price);
+    setStatus("live", "Live");
+    showBanner("");
+    showManual(false);
+    document.getElementById("updated").textContent = whenText;
+  }
+  function onPriceFail(err) {
+    if (pricePerOz != null) {
+      setStatus("", "Reconnecting… (showing last price)"); // keep last good price
+    } else {
+      setStatus("", "Offline");
+      showBanner("Live price feed unavailable (" + err.message + "). You can enter the price manually below.");
+      showManual(true);
+    }
+  }
+
+  // Free source: gold-api.com (USD/oz). FX handled separately by fetchFx().
+  function fetchGoldApi() {
     fetch(PRICE_URL, { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (data) {
         var price = Number(data && data.price);
         if (!price || isNaN(price)) throw new Error("bad payload");
-        applyPrice(price);
-        setStatus("live", "Live");
-        showBanner("");
-        showManual(false);
         var when = data.updatedAt ? new Date(data.updatedAt) : new Date();
-        document.getElementById("updated").textContent = "Updated " + when.toLocaleString() + " · refreshes every 60s";
+        onPriceOk(price, "Updated " + when.toLocaleString());
       })
-      .catch(function (err) {
-        if (pricePerOz != null) {
-          // Keep showing the last good price rather than blanking out.
-          setStatus("", "Reconnecting… (showing last price)");
-        } else {
-          setStatus("", "Offline");
-          showBanner("Live price feed unavailable (" + err.message + "). You can enter the price manually below.");
-          showManual(true);
-        }
-      });
+      .catch(onPriceFail);
+  }
+
+  function fetchPrice() {
+    // Preferred: metals.dev — one call gives live gold (USD/oz) AND live FX,
+    // so the CHF kilobar is a live cross. Falls back to gold-api on any error.
+    if (METALS_API_KEY) {
+      fetch("https://api.metals.dev/v1/latest?api_key=" + METALS_API_KEY + "&currency=USD&unit=toz", { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (d) {
+          var gold = d && d.metals && Number(d.metals.gold);
+          if (!gold || isNaN(gold)) throw new Error("no gold in payload");
+          // metals.dev returns `currencies` as USD-based rates (currency=USD).
+          if (d.currencies && d.currencies.CHF != null) {
+            var r = upperKeys(d.currencies); r.USD = 1;
+            fxRates = r;
+            fxMeta = { label: "live · metals.dev", asof: "live", live: true };
+            metalsFxOk = true;
+          } else {
+            metalsFxOk = false;
+          }
+          onPriceOk(gold, "Updated " + new Date().toLocaleString() + " · live · metals.dev");
+          if (!metalsFxOk) fetchFx(); // metals gave no FX — fill from the FX chain
+        })
+        .catch(function () { metalsFxOk = false; fetchGoldApi(); fetchFx(); });
+      return;
+    }
+    fetchGoldApi();
   }
 
   // --- controls ---
@@ -840,13 +895,15 @@
   // --- init ---
   recalc();
   updateAnalyzer();
-  fetchFx();
-  fetchPrice();
+  fetchPrice();                         // when METALS_API_KEY is set this also loads FX
+  if (!METALS_API_KEY) fetchFx();
   // Poll only while the tab is visible; catch up immediately when it regains focus.
   setInterval(function () { if (!document.hidden) fetchPrice(); }, REFRESH_MS);
-  setInterval(function () { if (!document.hidden) fetchFx(); }, FX_REFRESH_MS);
+  if (!METALS_API_KEY) setInterval(function () { if (!document.hidden) fetchFx(); }, FX_REFRESH_MS);
   document.addEventListener("visibilitychange", function () {
-    if (!document.hidden) { fetchPrice(); fetchFx(); }
+    if (document.hidden) return;
+    fetchPrice();
+    if (!METALS_API_KEY) fetchFx();
   });
 })();
 </script>
