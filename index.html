@@ -792,25 +792,27 @@
       // Twelve Data's free plan charges 1 credit PER symbol (8/min, 800/day), so
       // fetch only the currency in view (default CHF) — one credit per call.
       var want = (selectedCcy && selectedCcy !== "USD") ? selectedCcy : "CHF";
-      list.push({
-        url: "https://api.twelvedata.com/exchange_rate?symbol=USD/" + want + "&apikey=" + FX_API_KEY,
-        label: "live · Twelve Data", live: true,
-        parse: function (d) {
-          if (!d) return null;
-          var r = {};
-          if (d.rate && d.symbol && d.symbol.indexOf("USD/") === 0) {
-            // single-symbol shape: { symbol:"USD/CHF", rate:0.80 }
-            r[d.symbol.slice(4).toUpperCase()] = Number(d.rate);
-          } else {
-            // multi-symbol shape: { "USD/CHF": { rate:0.80 }, ... }
-            Object.keys(d).forEach(function (k) {
-              if (k.indexOf("USD/") === 0 && d[k] && d[k].rate) r[k.slice(4).toUpperCase()] = Number(d[k].rate);
-            });
-          }
-          return (r[want] != null) ? r : null;
-        },
-        when: function () { return "just now"; }
-      });
+      var td = "https://api.twelvedata.com/exchange_rate?symbol=USD/" + want + "&apikey=" + FX_API_KEY;
+      var tdParse = function (d) {
+        if (!d) return null;
+        // Some proxies return the body as a JSON string — parse it first.
+        if (typeof d === "string") { try { d = JSON.parse(d); } catch (e) { return null; } }
+        var r = {};
+        if (d.rate && d.symbol && ("" + d.symbol).indexOf("USD/") === 0) {
+          // single-symbol shape: { symbol:"USD/CHF", rate:0.80 }
+          r[("" + d.symbol).slice(4).toUpperCase()] = Number(d.rate);
+        } else {
+          // multi-symbol shape: { "USD/CHF": { rate:0.80 }, ... }
+          Object.keys(d).forEach(function (k) {
+            if (k.indexOf("USD/") === 0 && d[k] && d[k].rate) r[k.slice(4).toUpperCase()] = Number(d[k].rate);
+          });
+        }
+        return (r[want] != null) ? r : null;
+      };
+      // Twelve Data doesn't send CORS headers, so route the browser call through a
+      // CORS proxy (with a second proxy as backup); falls through to ECB if both fail.
+      list.push({ url: "https://corsproxy.io/?url=" + encodeURIComponent(td), label: "live · Twelve Data", live: true, parse: tdParse, when: function () { return "just now"; } });
+      list.push({ url: "https://api.allorigins.win/raw?url=" + encodeURIComponent(td), label: "live · Twelve Data", live: true, parse: tdParse, when: function () { return "just now"; } });
     }
     list.push({
       url: "https://api.frankfurter.dev/v1/latest?base=USD",
