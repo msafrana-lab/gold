@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gold Price Dashboard &amp; Bar Calculator</title>
+<meta name="description" content="Real-time gold spot price with a gold bar value calculator." />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --line: #2a2f3a;
+    --text: #e8eaed;
+    --muted: #9aa0ac;
+    --gold: #d4af37;
+    --gold-soft: #f0d98a;
+    --up: #45c988;
+    --down: #f2637a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: radial-gradient(1200px 600px at 50% -10%, #1a1d26 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    min-height: 100vh;
+    padding: 28px 16px 64px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; }
+
+  header.top { text-align: center; margin-bottom: 26px; }
+  header.top h1 {
+    margin: 0 0 6px;
+    font-size: clamp(24px, 4vw, 34px);
+    letter-spacing: 0.3px;
+  }
+  header.top h1 .coin { color: var(--gold); }
+  header.top p { margin: 0; color: var(--muted); font-size: 14px; }
+
+  .grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) {
+    .price-grid { grid-template-columns: 1.2fr 1fr; }
+  }
+
+  .card {
+    background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+
+  /* Live price card */
+  .price-card { display: flex; flex-direction: column; justify-content: center; }
+  .price-label {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: #666; display: inline-block; }
+  .dot.live { background: #45c988; box-shadow: 0 0 0 0 rgba(69,201,136,.6); animation: pulse 2s infinite; }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(69,201,136,.5); }
+    70% { box-shadow: 0 0 0 8px rgba(69,201,136,0); }
+    100% { box-shadow: 0 0 0 0 rgba(69,201,136,0); }
+  }
+  .price-big {
+    font-size: clamp(34px, 7vw, 52px);
+    font-weight: 700;
+    color: var(--gold-soft);
+    margin: 6px 0 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .price-sub { color: var(--muted); font-size: 14px; }
+  .price-sub b { color: var(--text); }
+  .updated { margin-top: 12px; font-size: 12px; color: var(--muted); }
+
+  .stat-list { display: grid; gap: 12px; }
+  .stat {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 12px 14px; background: rgba(255,255,255,.02);
+    border: 1px solid var(--line); border-radius: 10px;
+  }
+  .stat .k { color: var(--muted); font-size: 13px; }
+  .stat .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  /* Calculator */
+  .section-title {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin: 4px 0 14px;
+  }
+  .section-title h2 { margin: 0; font-size: 19px; }
+  .hint { color: var(--muted); font-size: 12.5px; }
+
+  .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { width: 100%; border-collapse: collapse; min-width: 560px; }
+  thead th {
+    text-align: right; font-size: 12px; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 1px solid var(--line);
+  }
+  thead th:first-child, tbody td:first-child { text-align: left; }
+  tbody td { padding: 10px 12px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; text-align: right; }
+  tbody tr:hover { background: rgba(255,255,255,.015); }
+  .bar-name { font-weight: 600; }
+  .bar-weight { color: var(--muted); font-size: 12px; }
+  input.qty {
+    width: 72px; text-align: right; padding: 7px 9px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; font-size: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  input.qty:focus { outline: none; border-color: var(--gold); }
+  td.subtotal { font-weight: 600; color: var(--gold-soft); }
+
+  tfoot td { padding: 14px 12px; font-size: 16px; }
+  tfoot .total-label { text-align: right; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-size: 13px; }
+  tfoot .total-value { text-align: right; font-weight: 700; font-size: 22px; color: var(--gold); }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 16px; }
+  button, .btn {
+    background: var(--gold); color: #1a1400; border: none; font-weight: 600;
+    padding: 9px 16px; border-radius: 9px; cursor: pointer; font-size: 14px;
+  }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+  button:hover { filter: brightness(1.05); }
+
+  .manual {
+    margin-top: 14px; padding: 12px 14px; border: 1px dashed var(--line); border-radius: 10px;
+    display: none; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--muted);
+  }
+  .manual.show { display: flex; }
+  .manual input {
+    width: 130px; padding: 7px 9px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; font-size: 14px;
+  }
+
+  .banner {
+    display: none; margin-bottom: 16px; padding: 11px 14px; border-radius: 10px;
+    background: rgba(242,99,122,.1); border: 1px solid rgba(242,99,122,.35);
+    color: #f7b0bd; font-size: 13.5px;
+  }
+  .banner.show { display: block; }
+
+  footer.foot { text-align: center; margin-top: 30px; color: var(--muted); font-size: 12.5px; }
+  footer.foot a { color: var(--gold-soft); text-decoration: none; }
+  footer.foot a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1><span class="coin">&#9679;</span> Gold Price Dashboard</h1>
+    <p>Live spot price &amp; gold-bar value calculator</p>
+  </header>
+
+  <div id="banner" class="banner"></div>
+
+  <div class="grid price-grid" style="margin-bottom:18px">
+    <div class="card price-card">
+      <div class="price-label">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Loading&hellip;</span>
+      </div>
+      <div id="priceBig" class="price-big">&mdash;</div>
+      <div class="price-sub">per troy ounce &middot; USD</div>
+      <div id="updated" class="updated">&nbsp;</div>
+    </div>
+
+    <div class="card">
+      <div class="stat-list">
+        <div class="stat"><span class="k">Per gram</span><span id="perGram" class="v">&mdash;</span></div>
+        <div class="stat"><span class="k">Per kilogram</span><span id="perKilo" class="v">&mdash;</span></div>
+        <div class="stat"><span class="k">Per troy ounce</span><span id="perOz" class="v">&mdash;</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">
+      <h2>Gold Bar Calculator</h2>
+      <span class="hint">Enter how many of each bar you hold</span>
+    </div>
+
+    <div class="table-scroll">
+      <table id="calcTable">
+        <thead>
+          <tr>
+            <th>Bar type</th>
+            <th>Value per bar</th>
+            <th>Quantity</th>
+            <th>Subtotal</th>
+          </tr>
+        </thead>
+        <tbody id="calcBody"><!-- rows injected --></tbody>
+        <tfoot>
+          <tr>
+            <td class="total-label" colspan="3">Total portfolio value</td>
+            <td class="total-value" id="grandTotal">$0.00</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="toolbar">
+      <button id="refreshBtn">Refresh price</button>
+      <button id="resetBtn" class="ghost">Reset quantities</button>
+    </div>
+
+    <div id="manual" class="manual">
+      Couldn&rsquo;t reach the live price feed. Enter the current gold price manually (USD per troy ounce):
+      <input id="manualInput" type="number" min="0" step="0.01" placeholder="e.g. 2400" />
+      <button id="manualApply">Apply</button>
+    </div>
+  </div>
+
+  <footer class="foot">
+    Spot price from <a href="https://gold-api.com" target="_blank" rel="noopener">gold-api.com</a>.
+    For information only &mdash; not investment advice.
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var OZ_IN_GRAMS = 31.1034768; // troy ounce
+  var API_URL = "https://api.gold-api.com/price/XAU";
+  var REFRESH_MS = 60000; // auto-refresh every 60s
+
+  // Standard gold bar types, defined by weight in grams.
+  var BARS = [
+    { name: "1 g bar",   grams: 1 },
+    { name: "5 g bar",   grams: 5 },
+    { name: "10 g bar",  grams: 10 },
+    { name: "20 g bar",  grams: 20 },
+    { name: "1 oz bar",  grams: OZ_IN_GRAMS },
+    { name: "50 g bar",  grams: 50 },
+    { name: "100 g bar", grams: 100 },
+    { name: "250 g bar", grams: 250 },
+    { name: "500 g bar", grams: 500 },
+    { name: "1 kg bar",  grams: 1000 },
+    { name: "400 oz Good Delivery", grams: 400 * OZ_IN_GRAMS }
+  ];
+
+  var pricePerOz = null; // USD per troy ounce
+
+  // --- formatting helpers ---
+  function fmtUSD(n) {
+    if (n == null || isNaN(n)) return "—";
+    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function fmtWeight(grams) {
+    if (grams >= 1000) return (grams / 1000).toLocaleString("en-US", { maximumFractionDigits: 3 }) + " kg";
+    return grams.toLocaleString("en-US", { maximumFractionDigits: 4 }) + " g";
+  }
+
+  // --- build calculator rows once ---
+  var body = document.getElementById("calcBody");
+  BARS.forEach(function (bar, i) {
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      '<td><span class="bar-name">' + bar.name + '</span><br>' +
+        '<span class="bar-weight">' + fmtWeight(bar.grams) + '</span></td>' +
+      '<td data-role="value" id="val-' + i + '">—</td>' +
+      '<td><input class="qty" type="number" min="0" step="1" value="0" ' +
+        'inputmode="numeric" data-idx="' + i + '" aria-label="Quantity of ' + bar.name + '"></td>' +
+      '<td class="subtotal" id="sub-' + i + '">' + fmtUSD(0) + '</td>';
+    body.appendChild(tr);
+  });
+
+  function barValue(bar) {
+    if (pricePerOz == null) return null;
+    return (bar.grams / OZ_IN_GRAMS) * pricePerOz;
+  }
+
+  function recalc() {
+    var total = 0;
+    BARS.forEach(function (bar, i) {
+      var val = barValue(bar);
+      document.getElementById("val-" + i).textContent = val == null ? "—" : fmtUSD(val);
+      var qtyEl = body.querySelector('input[data-idx="' + i + '"]');
+      var qty = parseFloat(qtyEl.value) || 0;
+      var sub = val == null ? 0 : val * qty;
+      document.getElementById("sub-" + i).textContent = fmtUSD(sub);
+      total += sub;
+    });
+    document.getElementById("grandTotal").textContent = fmtUSD(total);
+  }
+
+  function applyPrice(oz) {
+    pricePerOz = oz;
+    document.getElementById("priceBig").textContent = fmtUSD(oz);
+    document.getElementById("perOz").textContent = fmtUSD(oz);
+    document.getElementById("perGram").textContent = fmtUSD(oz / OZ_IN_GRAMS);
+    document.getElementById("perKilo").textContent = fmtUSD((oz / OZ_IN_GRAMS) * 1000);
+    recalc();
+  }
+
+  function setStatus(state, text) {
+    var dot = document.getElementById("statusDot");
+    var txt = document.getElementById("statusText");
+    dot.className = "dot" + (state === "live" ? " live" : "");
+    txt.textContent = text;
+  }
+
+  function showBanner(msg) {
+    var b = document.getElementById("banner");
+    if (!msg) { b.className = "banner"; b.textContent = ""; return; }
+    b.className = "banner show";
+    b.textContent = msg;
+  }
+
+  function showManual(show) {
+    document.getElementById("manual").className = "manual" + (show ? " show" : "");
+  }
+
+  function fetchPrice() {
+    setStatus("", "Fetching…");
+    fetch(API_URL, { cache: "no-store" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        var price = Number(data && data.price);
+        if (!price || isNaN(price)) throw new Error("bad payload");
+        applyPrice(price);
+        setStatus("live", "Live");
+        showBanner("");
+        showManual(false);
+        var when = data.updatedAt ? new Date(data.updatedAt) : new Date();
+        document.getElementById("updated").textContent =
+          "Updated " + when.toLocaleString();
+      })
+      .catch(function (err) {
+        setStatus("", "Offline");
+        showBanner("Live price feed unavailable (" + err.message + "). You can enter the price manually below.");
+        showManual(true);
+      });
+  }
+
+  // --- wire up controls ---
+  body.addEventListener("input", function (e) {
+    if (e.target && e.target.classList.contains("qty")) recalc();
+  });
+
+  document.getElementById("refreshBtn").addEventListener("click", fetchPrice);
+
+  document.getElementById("resetBtn").addEventListener("click", function () {
+    body.querySelectorAll("input.qty").forEach(function (el) { el.value = 0; });
+    recalc();
+  });
+
+  document.getElementById("manualApply").addEventListener("click", function () {
+    var v = parseFloat(document.getElementById("manualInput").value);
+    if (v > 0) {
+      applyPrice(v);
+      setStatus("", "Manual price");
+      document.getElementById("updated").textContent = "Manually entered price";
+    }
+  });
+
+  // --- init ---
+  recalc();
+  fetchPrice();
+  setInterval(fetchPrice, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
