@@ -311,6 +311,7 @@
     <div class="toolbar">
       <button id="refreshBtn">Refresh price</button>
       <button id="resetBtn" class="ghost">Reset quantities</button>
+      <span class="hint" id="liveHint" style="flex-basis:100%"></span>
     </div>
 
     <div id="manual" class="manual">
@@ -439,7 +440,7 @@
   // currency, so the CHF kilobar becomes a genuine live XAU/USD × USD/CHF cross
   // (Bloomberg's XAUCHF method). Left blank, the page uses the free gold-api +
   // ECB-reference chain below. Mind your plan's request quota vs the poll rate.
-  var METALS_API_KEY = "";
+  var METALS_API_KEY = "1S7LVRHBIAW0YBFOY22K927FOY22K";
 
   // The two units we track. Each is priced in its native REFERENCE currency:
   // the troy ounce in USD (LBMA/COMEX benchmark) and the 1 kg bar in CHF
@@ -453,7 +454,6 @@
   var lastPriceUsd = null;    // previous spot, for the up/down delta
   var fxRates = { USD: 1 };   // USD -> currency
   var fxMeta = { label: "—", asof: "", live: false };
-  var metalsFxOk = false;     // true when metals.dev supplied live FX this cycle
   var selectedCcy = "CHF";    // account currency (top selector)
 
   // --- formatting ---
@@ -791,8 +791,6 @@
     return list;
   }
   function fetchFx() {
-    // metals.dev already delivered live FX alongside the gold price this cycle.
-    if (METALS_API_KEY && metalsFxOk) return;
     var sources = fxSources();
     var i = 0;
     (function tryNext() {
@@ -832,7 +830,7 @@
 
   // Free source: gold-api.com (USD/oz). FX handled separately by fetchFx().
   function fetchGoldApi() {
-    fetch(PRICE_URL, { cache: "no-store" })
+    return fetch(PRICE_URL, { cache: "no-store" })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (data) {
         var price = Number(data && data.price);
@@ -843,31 +841,40 @@
       .catch(onPriceFail);
   }
 
-  function fetchPrice() {
-    // Preferred: metals.dev — one call gives live gold (USD/oz) AND live FX,
-    // so the CHF kilobar is a live cross. Falls back to gold-api on any error.
-    if (METALS_API_KEY) {
-      fetch("https://api.metals.dev/v1/latest?api_key=" + METALS_API_KEY + "&currency=USD&unit=toz", { cache: "no-store" })
-        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-        .then(function (d) {
-          var gold = d && d.metals && Number(d.metals.gold);
-          if (!gold || isNaN(gold)) throw new Error("no gold in payload");
-          // metals.dev returns `currencies` as USD-based rates (currency=USD).
-          if (d.currencies && d.currencies.CHF != null) {
-            var r = upperKeys(d.currencies); r.USD = 1;
-            fxRates = r;
-            fxMeta = { label: "live · metals.dev", asof: "live", live: true };
-            metalsFxOk = true;
-          } else {
-            metalsFxOk = false;
-          }
-          onPriceOk(gold, "Updated " + new Date().toLocaleString() + " · live · metals.dev");
-          if (!metalsFxOk) fetchFx(); // metals gave no FX — fill from the FX chain
-        })
-        .catch(function () { metalsFxOk = false; fetchGoldApi(); fetchFx(); });
-      return;
-    }
-    fetchGoldApi();
+  // Auto-refresh path is ALWAYS the free feed (gold-api + ECB FX). The metered
+  // metals.dev key is used only on demand (see fetchLiveQuote) because its free
+  // tier allows just ~100 requests/month — far too few to poll on a timer.
+  function fetchPrice() { fetchGoldApi(); }
+
+  // On-demand authoritative LIVE quote via metals.dev: one call = live gold +
+  // live FX, so the CHF kilobar is a true live cross. Spends ONE metered request.
+  var liveQuoteBusy = false;
+  function fetchLiveQuote() {
+    if (!METALS_API_KEY) { fetchGoldApi(); fetchFx(); return; } // no key → free refresh
+    if (liveQuoteBusy) return;                                  // guard against double-spend
+    liveQuoteBusy = true;
+    setStatus("", "Fetching live quote…");
+    fetch("https://api.metals.dev/v1/latest?api_key=" + METALS_API_KEY + "&currency=USD&unit=toz", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (d) {
+        var gold = d && d.metals && Number(d.metals.gold);
+        if (!gold || isNaN(gold)) throw new Error("no gold in payload");
+        if (d.currencies && d.currencies.CHF != null) {
+          var rr = upperKeys(d.currencies); rr.USD = 1;
+          fxRates = rr;
+          fxMeta = { label: "live · metals.dev", asof: new Date().toLocaleTimeString(), live: true };
+        }
+        onPriceOk(gold, "Live quote " + new Date().toLocaleTimeString() + " · metals.dev");
+      })
+      .catch(function () {
+        // Quota reached or feed down — fall back to the free feeds so the user still
+        // refreshes. Set the notice AFTER the free fetch (its success clears the banner).
+        fetchGoldApi().then(function () {
+          showBanner("Live metals.dev quote unavailable (quota reached or feed down) — showing the free gold-api + ECB cross.");
+        });
+        fetchFx();
+      })
+      .finally(function () { setTimeout(function () { liveQuoteBusy = false; }, 3000); });
   }
 
   // --- controls ---
@@ -878,7 +885,7 @@
     selectedCcy = e.target.value;
     renderAll();
   });
-  document.getElementById("refreshBtn").addEventListener("click", function () { fetchPrice(); fetchFx(); });
+  document.getElementById("refreshBtn").addEventListener("click", function () { fetchLiveQuote(); });
   document.getElementById("resetBtn").addEventListener("click", function () {
     body.querySelectorAll("input.qty").forEach(function (el) { el.value = 0; });
     recalc();
@@ -892,18 +899,25 @@
     }
   });
 
+  // Show the per-click cost of the live quote when a metered key is configured.
+  if (METALS_API_KEY) {
+    var lh = document.getElementById("liveHint");
+    if (lh) lh.textContent = "“Refresh price” fetches a live metals.dev quote (uses 1 of your ~100 monthly requests). Auto-refresh stays on the free feed.";
+  }
+
   // --- init ---
   recalc();
   updateAnalyzer();
-  fetchPrice();                         // when METALS_API_KEY is set this also loads FX
-  if (!METALS_API_KEY) fetchFx();
-  // Poll only while the tab is visible; catch up immediately when it regains focus.
+  fetchPrice();          // free gold price (USD/oz)
+  fetchFx();             // FX once (ECB free), or live if a Twelve Data key is set
+  // Auto-refresh the free feed only while the tab is visible. metals.dev is never
+  // polled on a timer (its free quota is ~100/month) — only on a Refresh click.
   setInterval(function () { if (!document.hidden) fetchPrice(); }, REFRESH_MS);
-  if (!METALS_API_KEY) setInterval(function () { if (!document.hidden) fetchFx(); }, FX_REFRESH_MS);
+  if (FX_API_KEY) setInterval(function () { if (!document.hidden) fetchFx(); }, FX_REFRESH_MS);
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) return;
     fetchPrice();
-    if (!METALS_API_KEY) fetchFx();
+    if (FX_API_KEY) fetchFx();
   });
 })();
 </script>
