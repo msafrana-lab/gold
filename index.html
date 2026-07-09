@@ -380,11 +380,11 @@
           <input id="anGoldFee" type="number" min="0" step="1" value="0" inputmode="decimal" />
         </div>
         <div class="fld">
-          <label>FX fee &mdash; Path A (bps)</label>
+          <label>FX fee &mdash; direct <span class="anCcyL">CHF</span> settlement (bps)</label>
           <input id="anFxFeeA" type="number" min="0" step="1" value="0" inputmode="decimal" />
         </div>
         <div class="fld">
-          <label>FX fee &mdash; Path B (bps)</label>
+          <label>FX fee &mdash; USD&rarr;<span class="anCcyL">CHF</span> conversion (bps)</label>
           <input id="anFxFeeB" type="number" min="0" step="1" value="0" inputmode="decimal" />
         </div>
       </div>
@@ -712,8 +712,8 @@
     var feeRows = "";
     function feeRow(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + "</span></div>"; }
     if (goldFeeBps > 0) feeRows += feeRow("Gold transaction fee (both paths)", goldFeeBps + " bps");
-    if (fxFeeABps > 0) feeRows += feeRow("FX fee — Path A", fxFeeABps + " bps");
-    if (fxFeeBBps > 0) feeRows += feeRow("FX fee — Path B", fxFeeBBps + " bps");
+    if (fxFeeABps > 0) feeRows += feeRow("FX fee — direct " + ccy + " settlement", fxFeeABps + " bps");
+    if (fxFeeBBps > 0) feeRows += feeRow("FX fee — USD→" + ccy + " conversion", fxFeeBBps + " bps");
 
     var decompHtml = "";
     if (rows) decompHtml += '<div class="dhead">Reverse-engineered spread</div>' + rows;
