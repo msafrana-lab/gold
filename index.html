@@ -171,16 +171,22 @@
 <div class="wrap">
   <div class="brandbar">
     <span class="logo" aria-hidden="true">
-      <svg viewBox="0 0 48 54" width="38" height="43" role="img" aria-label="Capital Y">
+      <svg viewBox="0 0 100 124" width="39" height="48" role="img" aria-label="Capital Y">
         <defs>
-          <linearGradient id="yg" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="cyg" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stop-color="#e0426f" />
-            <stop offset="1" stop-color="#ef8452" />
+            <stop offset="0.55" stop-color="#ef7e54" />
+            <stop offset="1" stop-color="#f6b24a" />
           </linearGradient>
         </defs>
-        <path d="M7 5 L24 27 L41 5" fill="none" stroke="url(#yg)" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round" />
-        <path d="M24 27 L24 40" fill="none" stroke="url(#yg)" stroke-width="7.5" stroke-linecap="round" />
-        <circle cx="24" cy="47.5" r="4.6" fill="#8fa694" />
+        <!-- left blade -->
+        <path d="M8,26 L52,26 L49,94 Q47.5,97.5 46,94 L8,26 Z" fill="url(#cyg)" />
+        <!-- short right arm -->
+        <path d="M60,26 L80,26 L68,60 Q67,62 66,60 L60,26 Z" fill="url(#cyg)" />
+        <!-- green spiral descender (evenodd punches the eye) -->
+        <path fill-rule="evenodd" fill="#5a8a71"
+          d="M49,95 C48,84 40,79 30,79 C18,79 9,88 9,101 C9,114 18,123 30,123 C43,123 51,113 49,100 Z
+             M41,99 m-4,0 a4,4 0 1,0 8,0 a4,4 0 1,0 -8,0 Z" />
       </svg>
     </span>
     <span class="wordmark">capital<span class="u">_</span>y</span>
