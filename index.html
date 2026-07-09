@@ -412,7 +412,7 @@
     <span class="fw">capital<span style="color:#dff0e6">_</span>y</span>
     <span class="fnote">
       Spot price from <a href="https://gold-api.com" target="_blank" rel="noopener">gold-api.com</a>,
-      FX from <a href="https://www.frankfurter.app" target="_blank" rel="noopener">frankfurter.app</a>,
+      FX from <a href="https://frankfurter.dev" target="_blank" rel="noopener">frankfurter.dev</a> (ECB),
       refreshed live. For information only &mdash; not investment advice.
     </span>
   </div>
@@ -424,8 +424,13 @@
 
   var OZ_IN_GRAMS = 31.1034768; // troy ounce
   var PRICE_URL = "https://api.gold-api.com/price/XAU";
-  var FX_URL = "https://api.frankfurter.app/latest?from=USD";
-  var REFRESH_MS = 60000; // gold price auto-refresh every 60s
+  var REFRESH_MS = 60000; // gold price + FX auto-refresh every 60s
+
+  // FX: for a true intraday rate (updates ~every 60s), paste a free Twelve Data
+  // API key here (twelvedata.com/pricing — free tier). Left blank, the page uses
+  // the reliable free end-of-day ECB sources below.
+  var FX_API_KEY = "";
+  var FX_CCYS = ["CHF", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "HKD", "SGD", "INR"];
 
   // Standard gold bar types, ordered by most common use (1 oz, then 1 kg, ...).
   var BARS = [
@@ -445,6 +450,7 @@
   var pricePerOz = null;      // spot, USD per troy ounce (always stored in USD)
   var lastPriceUsd = null;    // previous spot, for the up/down delta
   var fxRates = { USD: 1 };   // USD -> currency
+  var fxMeta = { label: "—", asof: "", live: false };
   var selectedCcy = "USD";
 
   // --- formatting ---
@@ -564,7 +570,9 @@
     var totalFairLoc = fairLocPerBar != null ? fairLocPerBar * bars : null;
 
     anEl("anRefSpot").textContent = haveSpot ? ("$" + pricePerOz.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / oz") : "—";
-    anEl("anRefFx").textContent = refRate != null ? refRate.toFixed(4) : "—";
+    anEl("anRefFx").textContent = refRate != null
+      ? (refRate.toFixed(4) + (fxMeta.asof ? "  ·  " + fxMeta.asof : ""))
+      : "—";
     anEl("anFairUsd").textContent = fairUsdPerBar != null ? ccyFmt(fairUsdPerBar, "USD") : "—";
     anEl("anFairLoc").textContent = fairLocPerBar != null ? ccyFmt(fairLocPerBar, ccy) : "—";
     anEl("anPosUsd").textContent = (totalFairUsd != null && bars > 0) ? ccyFmt(totalFairUsd, "USD") : "—";
@@ -664,10 +672,11 @@
       decomp.innerHTML = "";
     }
 
+    var fxKind = fxMeta.live ? "a <b>live intraday</b>" : "an <b>end-of-day reference</b>";
+    var fxWhen = fxMeta.asof ? (" — " + fxMeta.label + ", as of " + fxMeta.asof) : (fxMeta.label !== "—" ? " — " + fxMeta.label : "");
     anEl("anNote").innerHTML =
-      "Fair value uses the live gold spot and an <b>ECB daily</b> USD/" + ccy +
-      " reference (frankfurter.app). Enter your treasury desk’s live USD/" + ccy +
-      " for an exact Path B. Costs are shown versus the live fair mid, in basis points of notional.";
+      "Fair value uses the live gold spot and " + fxKind + " USD/" + ccy + " rate" + fxWhen +
+      ". Enter your treasury desk’s live USD/" + ccy + " for an exact Path B. Costs are shown versus the live fair mid, in basis points of notional.";
   }
 
   ["anBars", "anBar", "anSide", "anCcy", "anUsd", "anLocal", "anFx"].forEach(function (id) {
@@ -717,18 +726,68 @@
     document.getElementById("manual").className = "manual" + (show ? " show" : "");
   }
 
-  // --- live FX rates (USD -> others) ---
+  // --- live FX rates (USD -> others), with source fallback ---
+  function upperKeys(obj) {
+    var out = {}; if (!obj) return out;
+    Object.keys(obj).forEach(function (k) { out[k.toUpperCase()] = Number(obj[k]); });
+    return out;
+  }
+  function fxSources() {
+    var list = [];
+    if (FX_API_KEY) {
+      var syms = FX_CCYS.map(function (c) { return "USD/" + c; }).join(",");
+      list.push({
+        url: "https://api.twelvedata.com/exchange_rate?symbol=" + encodeURIComponent(syms) + "&apikey=" + FX_API_KEY,
+        label: "live · Twelve Data", live: true,
+        parse: function (d) {
+          if (!d) return null;
+          var r = {};
+          Object.keys(d).forEach(function (k) {
+            if (k.indexOf("USD/") === 0 && d[k] && d[k].rate) r[k.slice(4)] = Number(d[k].rate);
+          });
+          return Object.keys(r).length ? r : null;
+        },
+        when: function () { return "just now"; }
+      });
+    }
+    list.push({
+      url: "https://api.frankfurter.dev/v1/latest?base=USD",
+      label: "ECB reference · frankfurter.dev", live: false,
+      parse: function (d) { return d && d.rates ? d.rates : null; },
+      when: function (d) { return d && d.date ? d.date : ""; }
+    });
+    list.push({
+      url: "https://open.er-api.com/v6/latest/USD",
+      label: "daily · exchangerate-api", live: false,
+      parse: function (d) { return d && d.rates ? d.rates : null; },
+      when: function (d) { return d && d.time_last_update_utc ? d.time_last_update_utc.replace(/ \d{2}:\d{2}:\d{2}.*$/, "") : ""; }
+    });
+    list.push({
+      url: "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json",
+      label: "daily · currency-api", live: false,
+      parse: function (d) { return d && d.usd ? upperKeys(d.usd) : null; },
+      when: function (d) { return d && d.date ? d.date : ""; }
+    });
+    return list;
+  }
   function fetchFx() {
-    fetch(FX_URL, { cache: "no-store" })
-      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
-      .then(function (data) {
-        if (data && data.rates) {
-          fxRates = data.rates;
-          fxRates.USD = 1;
+    var sources = fxSources();
+    var i = 0;
+    (function tryNext() {
+      if (i >= sources.length) return; // all failed — keep whatever rates we have
+      var s = sources[i++];
+      fetch(s.url, { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+        .then(function (d) {
+          var rates = s.parse(d);
+          if (!rates || rates.CHF == null) throw new Error("no usable rates");
+          rates.USD = 1;
+          fxRates = rates;
+          fxMeta = { label: s.label, asof: s.when(d), live: s.live };
           renderAll();
-        }
-      })
-      .catch(function () { /* keep whatever rates we have; USD always works */ });
+        })
+        .catch(function () { tryNext(); });
+    })();
   }
 
   // --- live gold price ---
@@ -784,7 +843,7 @@
   updateAnalyzer();
   fetchFx();
   fetchPrice();
-  setInterval(fetchPrice, REFRESH_MS);
+  setInterval(function () { fetchPrice(); fetchFx(); }, REFRESH_MS);
 })();
 </script>
 </body>
