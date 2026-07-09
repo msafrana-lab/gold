@@ -342,10 +342,10 @@
           </select>
         </div>
         <div class="fld">
-          <label>Side</label>
+          <label>Side (our position)</label>
           <select id="anSide">
-            <option value="sell">Selling</option>
-            <option value="buy">Buying</option>
+            <option value="sell">We are selling</option>
+            <option value="buy">We are buying</option>
           </select>
         </div>
         <div class="fld">
@@ -424,11 +424,14 @@
 
   var OZ_IN_GRAMS = 31.1034768; // troy ounce
   var PRICE_URL = "https://api.gold-api.com/price/XAU";
-  var REFRESH_MS = 60000; // gold price + FX auto-refresh every 60s
+  var REFRESH_MS = 60000;      // gold price refresh (only while the tab is visible)
+  var FX_REFRESH_MS = 180000;  // FX refresh every 3 min while visible → ≤480 calls/day,
+                               // well under Twelve Data's free 800/day cap (with leeway)
 
-  // FX: for a true intraday rate (updates ~every 60s), paste a free Twelve Data
-  // API key here (twelvedata.com/pricing — free tier). Left blank, the page uses
-  // the reliable free end-of-day ECB sources below.
+  // FX: for a true intraday rate, paste a free Twelve Data API key here
+  // (twelvedata.com — free tier). Left blank, the page uses the reliable free
+  // end-of-day ECB sources below. All polling pauses when the tab is in the
+  // background and catches up the moment it regains focus.
   var FX_API_KEY = "";
   var FX_CCYS = ["CHF", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "HKD", "SGD", "INR"];
 
@@ -634,7 +637,7 @@
         verdict.innerHTML = "Best execution: <b>" + winnerName + "</b> — " +
           (side === "sell" ? "nets " : "costs ") + "<b>" + ccyFmt(delta, ccy) + "</b> " +
           (side === "sell" ? "more" : "less") + " (~" + bps(deltaBps).replace("+", "") + ") than " +
-          (betterB ? ("selling directly in " + ccy) : ("selling in USD then converting")) + ".";
+          (betterB ? ("dealing directly in " + ccy) : ("dealing in USD then converting")) + ".";
       }
       verdict.style.display = "block";
     } else {
@@ -843,7 +846,12 @@
   updateAnalyzer();
   fetchFx();
   fetchPrice();
-  setInterval(function () { fetchPrice(); fetchFx(); }, REFRESH_MS);
+  // Poll only while the tab is visible; catch up immediately when it regains focus.
+  setInterval(function () { if (!document.hidden) fetchPrice(); }, REFRESH_MS);
+  setInterval(function () { if (!document.hidden) fetchFx(); }, FX_REFRESH_MS);
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) { fetchPrice(); fetchFx(); }
+  });
 })();
 </script>
 </body>
