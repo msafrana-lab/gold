@@ -465,6 +465,8 @@
   var pricePerOz = null;      // spot, USD per troy ounce (always stored in USD)
   var lastPriceUsd = null;    // previous spot, for the up/down delta
   var fxRates = { USD: 1 };   // USD -> currency
+  var fxAnchor = {};          // trusted USD -> currency (ECB) used to fix orientation
+  var lastRawFx = null, lastRawMeta = null;
   var fxMeta = { label: "—", asof: "", live: false };
   var selectedCcy = "CHF";    // account currency (top selector)
 
@@ -822,6 +824,45 @@
     });
     return list;
   }
+  // Fix a source's orientation against the trusted ECB anchor: gold is priced in
+  // USD, so we need USD->ccy. If a feed hands back ccy->USD (the reciprocal), the
+  // value lands far from the anchor and its reciprocal lands on it — so flip it.
+  function orient(ccy, rate) {
+    var a = fxAnchor[ccy];
+    if (a == null || !rate || !isFinite(rate)) return rate;
+    var inv = 1 / rate;
+    return Math.abs(inv - a) < Math.abs(rate - a) ? inv : rate;
+  }
+  function setFxRates(raw, meta) {
+    if (!raw) return;
+    lastRawFx = raw; lastRawMeta = meta;
+    var out = {};
+    Object.keys(raw).forEach(function (k) {
+      var K = k.toUpperCase();
+      var v = Number(raw[k]);
+      if (v > 0) out[K] = orient(K, v);
+    });
+    out.USD = 1;
+    fxRates = out;
+    fxMeta = meta;
+    renderAll();
+  }
+  // Always load the ECB reference as the orientation anchor (base=USD → USD/ccy).
+  function fetchAnchor() {
+    fetch("https://api.frankfurter.dev/v1/latest?base=USD", { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (d && d.rates) {
+          var a = {};
+          Object.keys(d.rates).forEach(function (k) { a[k.toUpperCase()] = Number(d.rates[k]); });
+          a.USD = 1;
+          fxAnchor = a;
+          if (lastRawFx) setFxRates(lastRawFx, lastRawMeta); // re-orient once the anchor is known
+        }
+      })
+      .catch(function () {});
+  }
+
   function fetchFx() {
     var sources = fxSources();
     var i = 0;
@@ -833,10 +874,7 @@
         .then(function (d) {
           var rates = s.parse(d);
           if (!rates || rates.CHF == null) throw new Error("no usable rates");
-          rates.USD = 1;
-          fxRates = rates;
-          fxMeta = { label: s.label, asof: s.when(d), live: s.live };
-          renderAll();
+          setFxRates(rates, { label: s.label, asof: s.when(d), live: s.live });
         })
         .catch(function () { tryNext(); });
     })();
@@ -892,9 +930,7 @@
         var gold = d && d.metals && Number(d.metals.gold);
         if (!gold || isNaN(gold)) throw new Error("no gold in payload");
         if (d.currencies && d.currencies.CHF != null) {
-          var rr = upperKeys(d.currencies); rr.USD = 1;
-          fxRates = rr;
-          fxMeta = { label: "live · metals.dev", asof: new Date().toLocaleTimeString(), live: true };
+          setFxRates(d.currencies, { label: "live · metals.dev", asof: new Date().toLocaleTimeString(), live: true });
         }
         onPriceOk(gold, "Live quote " + new Date().toLocaleTimeString() + " · metals.dev");
       })
@@ -941,6 +977,7 @@
   recalc();
   updateAnalyzer();
   fetchPrice();          // free gold price (USD/oz)
+  fetchAnchor();         // ECB reference to lock FX orientation (USD -> ccy)
   fetchFx();             // FX once (ECB free), or live if a Twelve Data key is set
   // Auto-refresh the free feed only while the tab is visible. metals.dev is never
   // polled on a timer (its free quota is ~100/month) — only on a Refresh click.
