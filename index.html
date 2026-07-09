@@ -94,7 +94,9 @@
   .delta.down { display: inline; color: var(--down); }
   .ccy-note { display: none; margin-top: 6px; font-size: 12px; color: var(--orange-deep); }
   .ccy-note.show { display: block; }
-  .updated { margin-top: 14px; font-size: 12px; color: var(--muted); }
+  .updated { font-size: 12px; color: var(--muted); }
+  .price-refs { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; justify-content: space-between; font-size: 12.5px; color: var(--muted); }
+  .price-refs b { color: var(--ink); font-variant-numeric: tabular-nums; font-weight: 600; }
 
   .stat-list { display: grid; gap: 12px; }
   .stat { display: flex; justify-content: space-between; align-items: baseline; padding: 13px 16px; background: var(--bg-soft); border-radius: 12px; }
@@ -243,65 +245,59 @@
 <main class="wrap">
   <div id="banner" class="banner"></div>
 
-  <div class="grid price-grid" style="margin-bottom:20px">
-    <div class="card price-card">
-      <div class="price-top">
-        <div class="price-label">
-          <span id="statusDot" class="dot"></span>
-          <span id="statusText">Loading&hellip;</span>
-        </div>
-        <label class="ccy-wrap">
-          <span class="ccy-cap">Currency</span>
-          <select id="ccy" class="ccy-select" aria-label="Display currency">
-            <option value="USD">USD $</option>
-            <option value="CHF">CHF Fr</option>
-            <option value="EUR">EUR €</option>
-            <option value="GBP">GBP £</option>
-            <option value="JPY">JPY ¥</option>
-            <option value="CNY">CNY ¥</option>
-            <option value="CAD">CAD $</option>
-            <option value="AUD">AUD $</option>
-            <option value="HKD">HKD $</option>
-            <option value="SGD">SGD $</option>
-            <option value="INR">INR ₹</option>
-          </select>
-        </label>
+  <div class="card price-card" style="margin-bottom:20px">
+    <div class="price-top">
+      <div class="price-label">
+        <span id="statusDot" class="dot"></span>
+        <span id="statusText">Loading&hellip;</span>
       </div>
-      <div id="priceBig" class="price-big">&mdash;</div>
-      <div class="price-sub">per troy ounce &middot; <span id="ccyLabel">USD</span><span id="delta" class="delta"></span></div>
-      <div id="ccyNote" class="ccy-note"></div>
-      <div id="updated" class="updated">&nbsp;</div>
+      <label class="ccy-wrap">
+        <span class="ccy-cap">Account currency</span>
+        <select id="ccy" class="ccy-select" aria-label="Account currency">
+          <option value="USD">USD $</option>
+          <option value="CHF" selected>CHF Fr</option>
+          <option value="EUR">EUR €</option>
+          <option value="GBP">GBP £</option>
+          <option value="JPY">JPY ¥</option>
+          <option value="CNY">CNY ¥</option>
+          <option value="CAD">CAD $</option>
+          <option value="AUD">AUD $</option>
+          <option value="HKD">HKD $</option>
+          <option value="SGD">SGD $</option>
+          <option value="INR">INR ₹</option>
+        </select>
+      </label>
     </div>
-
-    <div class="card">
-      <div class="stat-list">
-        <div class="stat"><span class="k">Per troy ounce</span><span id="perOz" class="v">&mdash;</span></div>
-        <div class="stat"><span class="k">Per kilogram</span><span id="perKilo" class="v">&mdash;</span></div>
-        <div class="stat"><span class="k">Per gram</span><span id="perGram" class="v">&mdash;</span></div>
-      </div>
+    <div id="priceBig" class="price-big">&mdash;</div>
+    <div class="price-sub">per troy ounce &middot; USD &mdash; international spot reference<span id="delta" class="delta"></span></div>
+    <div class="price-refs">
+      <span>USD/<span class="acctL">CHF</span>: <b id="fxLine">&mdash;</b></span>
+      <span id="updated">&nbsp;</span>
     </div>
+    <div id="ccyNote" class="ccy-note"></div>
   </div>
 
   <div class="card">
     <div class="section-title">
-      <h2>Gold Bar Calculator</h2>
-      <span class="hint">Enter how many of each bar you hold</span>
+      <h2>Gold Value</h2>
+      <span class="hint">Reference quote &amp; your account-currency value</span>
     </div>
 
     <div class="table-scroll">
       <table id="calcTable">
         <thead>
           <tr>
-            <th>Bar type</th>
-            <th>Value per bar</th>
+            <th>Gold unit</th>
+            <th>Reference price</th>
+            <th>Price (<span class="acctL">CHF</span>)</th>
             <th>Quantity</th>
-            <th>Subtotal</th>
+            <th>Subtotal (<span class="acctL">CHF</span>)</th>
           </tr>
         </thead>
         <tbody id="calcBody"><!-- rows injected --></tbody>
         <tfoot>
           <tr>
-            <td class="total-label" colspan="3">Total portfolio value</td>
+            <td class="total-label" colspan="4">Total (<span class="acctL">CHF</span>)</td>
             <td class="total-value" id="grandTotal">&mdash;</td>
           </tr>
         </tfoot>
@@ -336,9 +332,6 @@
           <label>Bar size</label>
           <select id="anBar">
             <option value="1000">1 kg bar</option>
-            <option value="500">500 g bar</option>
-            <option value="250">250 g bar</option>
-            <option value="100">100 g bar</option>
             <option value="31.1034768">1 oz bar</option>
           </select>
         </div>
@@ -437,91 +430,92 @@
   var FX_API_KEY = "";
   var FX_CCYS = ["CHF", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "HKD", "SGD", "INR"];
 
-  // Standard gold bar types, ordered by most common use (1 oz, then 1 kg, ...).
-  var BARS = [
-    { name: "1 oz bar",  grams: OZ_IN_GRAMS },
-    { name: "1 kg bar",  grams: 1000 },
-    { name: "100 g bar", grams: 100 },
-    { name: "10 g bar",  grams: 10 },
-    { name: "50 g bar",  grams: 50 },
-    { name: "1 g bar",   grams: 1 },
-    { name: "5 g bar",   grams: 5 },
-    { name: "20 g bar",  grams: 20 },
-    { name: "250 g bar", grams: 250 },
-    { name: "500 g bar", grams: 500 },
-    { name: "400 oz Good Delivery", grams: 400 * OZ_IN_GRAMS }
+  // The two units we track. Each is priced in its native REFERENCE currency:
+  // the troy ounce in USD (LBMA/COMEX benchmark) and the 1 kg bar in CHF
+  // (Swiss bullion-desk convention). Everything derives from the live USD/oz spot.
+  var UNITS = [
+    { name: "1 troy ounce", short: "oz", grams: OZ_IN_GRAMS, ref: "USD" },
+    { name: "1 kg bar",     short: "kg", grams: 1000,        ref: "CHF" }
   ];
 
   var pricePerOz = null;      // spot, USD per troy ounce (always stored in USD)
   var lastPriceUsd = null;    // previous spot, for the up/down delta
   var fxRates = { USD: 1 };   // USD -> currency
   var fxMeta = { label: "—", asof: "", live: false };
-  var selectedCcy = "USD";
+  var selectedCcy = "CHF";    // account currency (top selector)
 
   // --- formatting ---
   function rateFor(ccy) { return ccy === "USD" ? 1 : fxRates[ccy]; }
-  function activeCcy() { return rateFor(selectedCcy) == null ? "USD" : selectedCcy; }
+  function accountCcy() { return rateFor(selectedCcy) == null ? "USD" : selectedCcy; }
 
-  function money(usd) {
+  // Format a USD amount converted into `ccy` (null if that rate is unavailable).
+  function inCcy(usd, ccy) {
     if (usd == null || isNaN(usd)) return "—";
-    var ccy = activeCcy();
-    var val = usd * (rateFor(ccy) || 1);
+    var rate = rateFor(ccy);
+    if (rate == null) return "—";
     try {
-      return new Intl.NumberFormat("en-US", { style: "currency", currency: ccy }).format(val);
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: ccy }).format(usd * rate);
     } catch (e) {
-      return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + ccy;
+      return (usd * rate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + ccy;
     }
   }
-  function fmtWeight(grams) {
-    if (grams >= 1000) return (grams / 1000).toLocaleString("en-US", { maximumFractionDigits: 3 }) + " kg";
-    return grams.toLocaleString("en-US", { maximumFractionDigits: 4 }) + " g";
-  }
 
-  // --- build calculator rows ---
+  // --- build the two unit rows ---
   var body = document.getElementById("calcBody");
-  BARS.forEach(function (bar, i) {
+  UNITS.forEach(function (u, i) {
     var tr = document.createElement("tr");
     tr.innerHTML =
-      '<td><span class="bar-name">' + bar.name + '</span><br>' +
-        '<span class="bar-weight">' + fmtWeight(bar.grams) + '</span></td>' +
-      '<td data-label="Value per bar" id="val-' + i + '">—</td>' +
+      '<td><span class="bar-name">' + u.name + '</span></td>' +
+      '<td data-label="Reference price" id="ref-' + i + '">—</td>' +
+      '<td data-label="Account price" id="acct-' + i + '">—</td>' +
       '<td data-label="Quantity"><input class="qty" type="number" min="0" step="1" value="0" ' +
-        'inputmode="numeric" data-idx="' + i + '" aria-label="Quantity of ' + bar.name + '"></td>' +
-      '<td class="subtotal" data-label="Subtotal" id="sub-' + i + '">' + money(0) + '</td>';
+        'inputmode="numeric" data-idx="' + i + '" aria-label="Quantity of ' + u.name + '"></td>' +
+      '<td class="subtotal" data-label="Subtotal" id="sub-' + i + '">—</td>';
     body.appendChild(tr);
   });
 
-  function barValueUsd(bar) {
+  function unitValueUsd(u) {
     if (pricePerOz == null) return null;
-    return (bar.grams / OZ_IN_GRAMS) * pricePerOz;
+    return (u.grams / OZ_IN_GRAMS) * pricePerOz;
   }
 
   function recalc() {
-    var total = 0;
-    BARS.forEach(function (bar, i) {
-      var val = barValueUsd(bar);
-      document.getElementById("val-" + i).textContent = val == null ? "—" : money(val);
-      var qtyEl = body.querySelector('input[data-idx="' + i + '"]');
-      var qty = parseFloat(qtyEl.value) || 0;
-      var sub = val == null ? 0 : val * qty;
-      document.getElementById("sub-" + i).textContent = money(sub);
-      total += sub;
+    var acct = accountCcy();
+    var total = 0, haveTotal = pricePerOz != null && rateFor(acct) != null;
+    UNITS.forEach(function (u, i) {
+      var usd = unitValueUsd(u);
+      // reference column: native currency for this unit
+      var refTxt = usd == null ? "—" : inCcy(usd, u.ref);
+      if (usd != null && rateFor(u.ref) != null) refTxt += " / " + u.short;
+      document.getElementById("ref-" + i).textContent = refTxt;
+      // account column: converted to the selected account currency
+      document.getElementById("acct-" + i).textContent = inCcy(usd, acct);
+      // subtotal
+      var qty = parseFloat(body.querySelector('input[data-idx="' + i + '"]').value) || 0;
+      var subUsd = usd == null ? 0 : usd * qty;
+      document.getElementById("sub-" + i).textContent = inCcy(subUsd, acct);
+      total += subUsd;
     });
-    document.getElementById("grandTotal").textContent = pricePerOz == null ? "—" : money(total);
+    document.getElementById("grandTotal").textContent = haveTotal ? inCcy(total, acct) : "—";
   }
 
-  // Re-render every money figure on the page (after a price OR currency change).
+  // Re-render every figure on the page (after a price OR currency change).
   function renderAll() {
-    document.getElementById("priceBig").textContent = money(pricePerOz);
-    document.getElementById("perOz").textContent = money(pricePerOz);
-    document.getElementById("perGram").textContent = money(pricePerOz == null ? null : pricePerOz / OZ_IN_GRAMS);
-    document.getElementById("perKilo").textContent = money(pricePerOz == null ? null : (pricePerOz / OZ_IN_GRAMS) * 1000);
-    document.getElementById("ccyLabel").textContent = activeCcy();
+    // Headline spot is the raw USD/oz reference (no conversion baked in).
+    document.getElementById("priceBig").textContent = pricePerOz == null ? "—" : inCcy(pricePerOz, "USD");
+
+    var acct = accountCcy();
+    document.querySelectorAll(".acctL").forEach(function (e) { e.textContent = acct; });
+
+    var fxRate = rateFor(acct);
+    document.getElementById("fxLine").textContent =
+      (acct === "USD") ? "1.0000 (account is USD)"
+        : (fxRate != null ? fxRate.toFixed(4) + (fxMeta.asof ? " · " + fxMeta.asof : "") : "—");
 
     var note = document.getElementById("ccyNote");
     if (selectedCcy !== "USD" && rateFor(selectedCcy) == null) {
       note.className = "ccy-note show";
-      note.textContent = "Live exchange rate for " + selectedCcy + " unavailable — showing USD.";
+      note.textContent = "Live exchange rate for " + selectedCcy + " unavailable — account-currency values paused (USD reference still live).";
     } else {
       note.className = "ccy-note";
       note.textContent = "";
@@ -704,7 +698,7 @@
     if (!diffUsd) { return; } // keep last shown delta; no change this tick
     var up = diffUsd > 0;
     el.className = "delta " + (up ? "up" : "down");
-    el.textContent = (up ? "▲ +" : "▼ −") + money(Math.abs(diffUsd)).replace(/^[^\d-]*/, "");
+    el.textContent = (up ? "▲ +" : "▼ −") + inCcy(Math.abs(diffUsd), "USD").replace(/^[^\d-]*/, "");
   }
 
   function applyPrice(oz) {
