@@ -375,6 +375,18 @@
           <input id="anFx" type="number" min="0" step="0.0001" placeholder="live reference" inputmode="decimal" />
           <span class="fhint">The rate your own treasury / FX desk gives to convert the USD sale proceeds into <span class="anCcyL">CHF</span> (Path B). Leave blank to use the live interbank reference.</span>
         </div>
+        <div class="fld">
+          <label>Gold transaction fee (bps)</label>
+          <input id="anGoldFee" type="number" min="0" step="1" value="0" inputmode="decimal" />
+        </div>
+        <div class="fld">
+          <label>FX fee &mdash; Path A (bps)</label>
+          <input id="anFxFeeA" type="number" min="0" step="1" value="0" inputmode="decimal" />
+        </div>
+        <div class="fld">
+          <label>FX fee &mdash; Path B (bps)</label>
+          <input id="anFxFeeB" type="number" min="0" step="1" value="0" inputmode="decimal" />
+        </div>
       </div>
 
       <div class="an-ref">
@@ -432,7 +444,7 @@
   // (twelvedata.com — free tier). Left blank, the page uses the reliable free
   // end-of-day ECB sources below. All polling pauses when the tab is in the
   // background and catches up the moment it regains focus.
-  var FX_API_KEY = "";
+  var FX_API_KEY = "11b4bd74da514b6eaca9a8cc341e46bb";
   var FX_CCYS = ["CHF", "EUR", "GBP", "JPY", "CNY", "CAD", "AUD", "HKD", "SGD", "INR"];
 
   // Preferred single-source LIVE feed: a free metals.dev API key (metals.dev —
@@ -598,18 +610,27 @@
     anEl("anPosUsd").textContent = (totalFairUsd != null && bars > 0) ? ccyFmt(totalFairUsd, "USD") : "—";
     anEl("anPosLoc").textContent = (totalFairLoc != null && bars > 0) ? ccyFmt(totalFairLoc, ccy) : "—";
 
+    // Fees (basis points). Gold fee applies to BOTH paths; FX fee is per-path.
+    var goldFeeBps = parseFloat(anEl("anGoldFee").value) || 0;
+    var fxFeeABps = parseFloat(anEl("anFxFeeA").value) || 0;
+    var fxFeeBBps = parseFloat(anEl("anFxFeeB").value) || 0;
+    var feeAFrac = (goldFeeBps + fxFeeABps) / 10000;
+    var feeBFrac = (goldFeeBps + fxFeeBBps) / 10000;
+    // Sell: fees reduce what we receive. Buy: fees increase what we pay.
+    function applyFees(gross, frac) { return side === "sell" ? gross * (1 - frac) : gross * (1 + frac); }
+
     // Path A — deal directly in local currency
     var proceedsA = null, costAbps = null;
     if (dealerLoc > 0 && bars > 0 && totalFairLoc != null) {
-      proceedsA = dealerLoc * bars;
+      proceedsA = applyFees(dealerLoc * bars, feeAFrac);
       var costA = side === "sell" ? (totalFairLoc - proceedsA) : (proceedsA - totalFairLoc);
       costAbps = costA / totalFairLoc * 10000;
     }
     // Path B — deal in USD, convert separately at treasury rate
     var proceedsB = null, costBbps = null;
     if (dealerUsd > 0 && bars > 0 && treasury > 0) {
-      var proceedsUsdB = dealerUsd * ozPerBar * bars;
-      proceedsB = proceedsUsdB * treasury;
+      var grossB = dealerUsd * ozPerBar * bars * treasury;
+      proceedsB = applyFees(grossB, feeBFrac);
       if (totalFairLoc != null) {
         var costB = side === "sell" ? (totalFairLoc - proceedsB) : (proceedsB - totalFairLoc);
         costBbps = costB / totalFairLoc * 10000;
@@ -617,13 +638,15 @@
     }
 
     var verb = side === "sell" ? "Proceeds" : "Outlay";
+    var feeTagA = (goldFeeBps + fxFeeABps) > 0 ? " (incl. fees)" : "";
+    var feeTagB = (goldFeeBps + fxFeeBBps) > 0 ? " (incl. fees)" : "";
     anEl("anAmtA").textContent = proceedsA != null ? ccyFmt(proceedsA, ccy) : "—";
     anEl("anSubA").textContent = proceedsA != null
-      ? (verb + (costAbps != null ? " · cost " + bps(costAbps) + " vs fair" : ""))
+      ? (verb + (costAbps != null ? " · cost " + bps(costAbps) + " vs fair" + feeTagA : ""))
       : "Enter the dealer’s " + ccy + " / bar quote";
     anEl("anAmtB").textContent = proceedsB != null ? ccyFmt(proceedsB, ccy) : "—";
     anEl("anSubB").textContent = proceedsB != null
-      ? (verb + (costBbps != null ? " · cost " + bps(costBbps) + " vs fair" : ""))
+      ? (verb + (costBbps != null ? " · cost " + bps(costBbps) + " vs fair" + feeTagB : ""))
       : (dealerUsd > 0 && refRate == null ? "FX reference unavailable" : "Enter the dealer’s USD / oz quote");
 
     // Verdict + best highlight
@@ -684,8 +707,17 @@
       rows += '<div class="row"><span class="k">Treasury FX spread vs reference</span><span class="v">' +
         pips(tSpread) + " · " + bps(tSpread / refRate * 10000) + "</span></div>";
     }
-    if (rows) {
-      decomp.innerHTML = '<div class="dhead">Reverse-engineered spread</div>' + rows;
+    var feeRows = "";
+    function feeRow(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + "</span></div>"; }
+    if (goldFeeBps > 0) feeRows += feeRow("Gold transaction fee (both paths)", goldFeeBps + " bps");
+    if (fxFeeABps > 0) feeRows += feeRow("FX fee — Path A", fxFeeABps + " bps");
+    if (fxFeeBBps > 0) feeRows += feeRow("FX fee — Path B", fxFeeBBps + " bps");
+
+    var decompHtml = "";
+    if (rows) decompHtml += '<div class="dhead">Reverse-engineered spread</div>' + rows;
+    if (feeRows) decompHtml += '<div class="dhead"' + (rows ? ' style="margin-top:8px"' : "") + ">Fees applied</div>" + feeRows;
+    if (decompHtml) {
+      decomp.innerHTML = decompHtml;
       decomp.style.display = "grid";
     } else {
       decomp.style.display = "none";
@@ -699,7 +731,7 @@
       ". Enter your treasury desk’s live USD/" + ccy + " for an exact Path B. Costs are shown versus the live fair mid, in basis points of notional.";
   }
 
-  ["anBars", "anBar", "anSide", "anCcy", "anUsd", "anLocal", "anFx"].forEach(function (id) {
+  ["anBars", "anBar", "anSide", "anCcy", "anUsd", "anLocal", "anFx", "anGoldFee", "anFxFeeA", "anFxFeeB"].forEach(function (id) {
     var el = anEl(id);
     el.addEventListener("input", updateAnalyzer);
     el.addEventListener("change", updateAnalyzer);
