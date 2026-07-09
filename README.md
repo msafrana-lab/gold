@@ -1,6 +1,6 @@
-# Gold Price Dashboard
+# Capital Y — Gold Price Dashboard
 
-A single-file, static HTML dashboard showing the **real-time gold spot price** with a built-in **gold-bar value calculator**.
+A single-file, static HTML dashboard showing the **real-time gold spot price** with a built-in **gold-bar value calculator**, styled in the **Capital Y** visual identity (warm rose→coral→orange gradient, sage-green footer, Playfair Display headings over Montserrat body).
 
 ![Static site](https://img.shields.io/badge/type-static%20site-informational)
 
