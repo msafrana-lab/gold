@@ -140,6 +140,44 @@
   footer.foot .fnote { font-size: 12px; opacity: .92; }
   footer.foot a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
 
+  /* ---- Broker Quote Analyzer ---- */
+  .an-grid { display: grid; gap: 20px; grid-template-columns: 1.05fr .95fr; }
+  @media (max-width: 780px) { .an-grid { grid-template-columns: 1fr; } }
+  .an-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fld { display: flex; flex-direction: column; gap: 5px; }
+  .fld label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
+  .fld input, .fld select {
+    padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: 15px;
+    font-family: var(--sans); color: var(--ink); background: var(--bg); font-variant-numeric: tabular-nums;
+  }
+  .fld input:focus, .fld select:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 3px rgba(224,66,111,.12); }
+  .fld.wide { grid-column: 1 / -1; }
+  .an-ref { background: var(--bg-soft); border-radius: 14px; padding: 16px 18px; display: grid; gap: 11px; align-content: start; }
+  .refrow { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; align-items: baseline; }
+  .refrow .k { color: var(--muted); }
+  .refrow .v { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); text-align: right; }
+
+  .verdict { margin: 20px 0 4px; padding: 15px 18px; border-radius: 14px; background: var(--green); color: #fff; font-size: 14px; line-height: 1.5; }
+  .verdict b { font-family: var(--serif); font-weight: 800; }
+  .verdict.tie { background: var(--bg-soft); color: var(--ink); border: 1px solid var(--line); }
+
+  .an-paths { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+  @media (max-width: 560px) { .an-paths { grid-template-columns: 1fr; } }
+  .path { border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; }
+  .path.best { border-color: var(--green); box-shadow: 0 0 0 2px rgba(143,166,148,.28); background: #f6faf7; }
+  .path h4 { margin: 0 0 8px; font-size: 13.5px; color: var(--ink); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .path .big { font-family: var(--serif); font-size: 24px; font-weight: 800; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .path .sub { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 10.5px; font-weight: 700; letter-spacing: .4px; }
+  .badge.best { background: var(--green); color: #fff; }
+
+  .decomp { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 14px; display: grid; gap: 9px; }
+  .decomp .dhead { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 700; }
+  .decomp .row { display: flex; justify-content: space-between; gap: 14px; font-size: 13px; align-items: baseline; }
+  .decomp .row .k { color: var(--muted); }
+  .decomp .row .v { font-weight: 600; font-variant-numeric: tabular-nums; text-align: right; color: var(--ink); }
+  .an-note { font-size: 12px; color: var(--muted); margin-top: 14px; line-height: 1.5; }
+
   /* ---- Mobile: reflow calculator into stacked cards ---- */
   @media (max-width: 640px) {
     .wrap { padding: 0 14px; }
@@ -164,6 +202,8 @@
     tfoot .total-value { font-size: 26px; }
     .toolbar button { flex: 1 1 auto; padding: 14px 18px; }
     .section-title { flex-direction: column; align-items: flex-start; gap: 4px; }
+    .an-inputs { grid-template-columns: 1fr 1fr; }
+    .fld input, .fld select { font-size: 16px; }
   }
 </style>
 </head>
@@ -278,6 +318,93 @@
       <button id="manualApply">Apply</button>
     </div>
   </div>
+
+  <div class="card analyzer" style="margin-top:20px">
+    <div class="section-title">
+      <h2>Broker Quote Analyzer</h2>
+      <span class="hint">Cross-check a dealer&rsquo;s quote &amp; compare USD vs local-currency execution</span>
+    </div>
+
+    <div class="an-grid">
+      <div class="an-inputs">
+        <div class="fld">
+          <label>Bars</label>
+          <input id="anBars" type="number" min="1" step="1" value="30" inputmode="numeric" />
+        </div>
+        <div class="fld">
+          <label>Bar size</label>
+          <select id="anBar">
+            <option value="1000">1 kg bar</option>
+            <option value="500">500 g bar</option>
+            <option value="250">250 g bar</option>
+            <option value="100">100 g bar</option>
+            <option value="31.1034768">1 oz bar</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>Side</label>
+          <select id="anSide">
+            <option value="sell">Selling</option>
+            <option value="buy">Buying</option>
+          </select>
+        </div>
+        <div class="fld">
+          <label>Settlement currency</label>
+          <select id="anCcy">
+            <option value="CHF" selected>CHF</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="JPY">JPY</option>
+            <option value="CNY">CNY</option>
+            <option value="CAD">CAD</option>
+            <option value="AUD">AUD</option>
+            <option value="HKD">HKD</option>
+            <option value="SGD">SGD</option>
+            <option value="INR">INR</option>
+          </select>
+        </div>
+        <div class="fld wide">
+          <label>Dealer gold quote &mdash; USD / troy oz</label>
+          <input id="anUsd" type="number" min="0" step="0.01" placeholder="e.g. 2380.50" inputmode="decimal" />
+        </div>
+        <div class="fld wide">
+          <label>Dealer gold quote &mdash; <span class="anCcyL">CHF</span> / <span class="anBarL">1 kg</span> bar</label>
+          <input id="anLocal" type="number" min="0" step="0.01" placeholder="e.g. 68500" inputmode="decimal" />
+        </div>
+        <div class="fld wide">
+          <label>Treasury FX &mdash; USD/<span class="anCcyL">CHF</span> (for path B)</label>
+          <input id="anFx" type="number" min="0" step="0.0001" placeholder="live reference" inputmode="decimal" />
+        </div>
+      </div>
+
+      <div class="an-ref">
+        <div class="refrow"><span class="k">Spot gold</span><span class="v" id="anRefSpot">&mdash;</span></div>
+        <div class="refrow"><span class="k">USD/<span class="anCcyL">CHF</span> (reference)</span><span class="v" id="anRefFx">&mdash;</span></div>
+        <div class="refrow"><span class="k">Fair value &mdash; <span class="anBarL">1 kg</span> bar (USD)</span><span class="v" id="anFairUsd">&mdash;</span></div>
+        <div class="refrow"><span class="k">Fair value &mdash; <span class="anBarL">1 kg</span> bar (<span class="anCcyL">CHF</span>)</span><span class="v" id="anFairLoc">&mdash;</span></div>
+        <div class="refrow"><span class="k">Position fair value (USD)</span><span class="v" id="anPosUsd">&mdash;</span></div>
+        <div class="refrow"><span class="k">Position fair value (<span class="anCcyL">CHF</span>)</span><span class="v" id="anPosLoc">&mdash;</span></div>
+      </div>
+    </div>
+
+    <div id="anVerdict" class="verdict" style="display:none"></div>
+
+    <div class="an-paths">
+      <div class="path" id="pathA">
+        <h4>A &middot; Deal directly in <span class="anCcyL">CHF</span> <span id="badgeA" class="badge"></span></h4>
+        <div class="big" id="anAmtA">&mdash;</div>
+        <div class="sub" id="anSubA">Enter the dealer&rsquo;s local-currency quote</div>
+      </div>
+      <div class="path" id="pathB">
+        <h4>B &middot; Deal in USD, then convert <span id="badgeB" class="badge"></span></h4>
+        <div class="big" id="anAmtB">&mdash;</div>
+        <div class="sub" id="anSubB">Enter the dealer&rsquo;s USD quote</div>
+      </div>
+    </div>
+
+    <div class="decomp" id="anDecomp" style="display:none"></div>
+    <div class="an-note" id="anNote"></div>
+  </div>
 </main>
 
 <footer class="foot">
@@ -389,7 +516,165 @@
       note.textContent = "";
     }
     recalc();
+    updateAnalyzer();
   }
+
+  // ---------- Broker Quote Analyzer ----------
+  var OZ_PER_KG = 1000 / OZ_IN_GRAMS; // ≈ 32.150747 troy oz per kg
+
+  function ccyFmt(v, ccy) {
+    if (v == null || isNaN(v)) return "—";
+    var mf = Math.abs(v) >= 1000 ? 0 : 2;
+    try {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: ccy, minimumFractionDigits: 0, maximumFractionDigits: mf }).format(v);
+    } catch (e) {
+      return v.toLocaleString("en-US", { maximumFractionDigits: mf }) + " " + ccy;
+    }
+  }
+  function signed(v, dp) { return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(dp); }
+  function bps(v) { return signed(v, Math.abs(v) < 10 ? 1 : 0) + " bps"; }
+  function pips(rateDiff) { return signed(rateDiff * 10000, 1) + " pips"; }
+
+  function anEl(id) { return document.getElementById(id); }
+
+  function updateAnalyzer() {
+    var ccy = anEl("anCcy").value;
+    var barSel = anEl("anBar");
+    var barGrams = parseFloat(barSel.value) || 1000;
+    var barLabel = barSel.options[barSel.selectedIndex].text.replace(" bar", "");
+    document.querySelectorAll(".anCcyL").forEach(function (e) { e.textContent = ccy; });
+    document.querySelectorAll(".anBarL").forEach(function (e) { e.textContent = barLabel; });
+
+    var ozPerBar = barGrams / OZ_IN_GRAMS;
+    var bars = parseFloat(anEl("anBars").value) || 0;
+    var side = anEl("anSide").value;                 // 'sell' | 'buy'
+    var dealerUsd = parseFloat(anEl("anUsd").value);  // USD per oz
+    var dealerLoc = parseFloat(anEl("anLocal").value);// local per bar
+    var refRate = rateFor(ccy);                       // USD -> ccy (live reference)
+    var treasuryInput = parseFloat(anEl("anFx").value);
+    var treasury = treasuryInput > 0 ? treasuryInput : refRate; // default to live reference
+
+    if (refRate != null) anEl("anFx").placeholder = refRate.toFixed(4);
+
+    // Live reference / fair values
+    var haveSpot = pricePerOz != null;
+    var fairUsdPerBar = haveSpot ? pricePerOz * ozPerBar : null;
+    var fairLocPerBar = (haveSpot && refRate != null) ? fairUsdPerBar * refRate : null;
+    var totalFairUsd = fairUsdPerBar != null ? fairUsdPerBar * bars : null;
+    var totalFairLoc = fairLocPerBar != null ? fairLocPerBar * bars : null;
+
+    anEl("anRefSpot").textContent = haveSpot ? ("$" + pricePerOz.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " / oz") : "—";
+    anEl("anRefFx").textContent = refRate != null ? refRate.toFixed(4) : "—";
+    anEl("anFairUsd").textContent = fairUsdPerBar != null ? ccyFmt(fairUsdPerBar, "USD") : "—";
+    anEl("anFairLoc").textContent = fairLocPerBar != null ? ccyFmt(fairLocPerBar, ccy) : "—";
+    anEl("anPosUsd").textContent = (totalFairUsd != null && bars > 0) ? ccyFmt(totalFairUsd, "USD") : "—";
+    anEl("anPosLoc").textContent = (totalFairLoc != null && bars > 0) ? ccyFmt(totalFairLoc, ccy) : "—";
+
+    // Path A — deal directly in local currency
+    var proceedsA = null, costAbps = null;
+    if (dealerLoc > 0 && bars > 0 && totalFairLoc != null) {
+      proceedsA = dealerLoc * bars;
+      var costA = side === "sell" ? (totalFairLoc - proceedsA) : (proceedsA - totalFairLoc);
+      costAbps = costA / totalFairLoc * 10000;
+    }
+    // Path B — deal in USD, convert separately at treasury rate
+    var proceedsB = null, costBbps = null;
+    if (dealerUsd > 0 && bars > 0 && treasury > 0) {
+      var proceedsUsdB = dealerUsd * ozPerBar * bars;
+      proceedsB = proceedsUsdB * treasury;
+      if (totalFairLoc != null) {
+        var costB = side === "sell" ? (totalFairLoc - proceedsB) : (proceedsB - totalFairLoc);
+        costBbps = costB / totalFairLoc * 10000;
+      }
+    }
+
+    var verb = side === "sell" ? "Proceeds" : "Outlay";
+    anEl("anAmtA").textContent = proceedsA != null ? ccyFmt(proceedsA, ccy) : "—";
+    anEl("anSubA").textContent = proceedsA != null
+      ? (verb + (costAbps != null ? " · cost " + bps(costAbps) + " vs fair" : ""))
+      : "Enter the dealer’s " + ccy + " / bar quote";
+    anEl("anAmtB").textContent = proceedsB != null ? ccyFmt(proceedsB, ccy) : "—";
+    anEl("anSubB").textContent = proceedsB != null
+      ? (verb + (costBbps != null ? " · cost " + bps(costBbps) + " vs fair" : ""))
+      : (dealerUsd > 0 && refRate == null ? "FX reference unavailable" : "Enter the dealer’s USD / oz quote");
+
+    // Verdict + best highlight
+    var pathAEl = anEl("pathA"), pathBEl = anEl("pathB");
+    var badgeA = anEl("badgeA"), badgeB = anEl("badgeB");
+    var verdict = anEl("anVerdict");
+    pathAEl.classList.remove("best"); pathBEl.classList.remove("best");
+    badgeA.className = "badge"; badgeA.textContent = "";
+    badgeB.className = "badge"; badgeB.textContent = "";
+
+    if (proceedsA != null && proceedsB != null && totalFairLoc != null) {
+      // Seller wants MORE local; buyer wants to pay LESS local.
+      var betterB = side === "sell" ? (proceedsB > proceedsA) : (proceedsB < proceedsA);
+      var delta = Math.abs(proceedsB - proceedsA);
+      var deltaBps = delta / totalFairLoc * 10000;
+      var tie = deltaBps < 1;
+      if (tie) {
+        verdict.className = "verdict tie";
+        verdict.innerHTML = "The two paths are within " + bps(deltaBps) + " — <b>dealing directly in " + ccy +
+          "</b> is simpler and avoids an extra settlement step.";
+        pathAEl.classList.add("best");
+      } else {
+        verdict.className = "verdict";
+        var winnerName = betterB ? ("Deal in USD, then convert to " + ccy) : ("Deal directly in " + ccy);
+        (betterB ? pathBEl : pathAEl).classList.add("best");
+        (betterB ? badgeB : badgeA).className = "badge best";
+        (betterB ? badgeB : badgeA).textContent = "BEST";
+        verdict.innerHTML = "Best execution: <b>" + winnerName + "</b> — " +
+          (side === "sell" ? "nets " : "costs ") + "<b>" + ccyFmt(delta, ccy) + "</b> " +
+          (side === "sell" ? "more" : "less") + " (~" + bps(deltaBps).replace("+", "") + ") than " +
+          (betterB ? ("selling directly in " + ccy) : ("selling in USD then converting")) + ".";
+      }
+      verdict.style.display = "block";
+    } else {
+      verdict.style.display = "none";
+    }
+
+    // Reverse-engineering / decomposition
+    var decomp = anEl("anDecomp");
+    var rows = "";
+    if (dealerUsd > 0 && haveSpot) {
+      var metalSpread = side === "sell" ? (pricePerOz - dealerUsd) : (dealerUsd - pricePerOz);
+      var metalBps = metalSpread / pricePerOz * 10000;
+      rows += '<div class="row"><span class="k">Metal spread vs spot</span><span class="v">' +
+        signed(metalSpread, 2) + " USD/oz · " + bps(metalBps) + "</span></div>";
+    }
+    if (dealerLoc > 0 && dealerUsd > 0 && refRate != null) {
+      var impliedRate = dealerLoc / (dealerUsd * ozPerBar);
+      var fxMk = side === "sell" ? (refRate - impliedRate) : (impliedRate - refRate);
+      var fxMkBps = fxMk / refRate * 10000;
+      rows += '<div class="row"><span class="k">Embedded USD/' + ccy + " in " + ccy + ' quote</span><span class="v">' +
+        impliedRate.toFixed(4) + " (ref " + refRate.toFixed(4) + ")</span></div>";
+      rows += '<div class="row"><span class="k">Hidden FX markup in ' + ccy + ' quote</span><span class="v">' +
+        pips(fxMk) + " · " + bps(fxMkBps) + "</span></div>";
+    }
+    if (treasuryInput > 0 && refRate != null) {
+      var tSpread = side === "sell" ? (refRate - treasury) : (treasury - refRate);
+      rows += '<div class="row"><span class="k">Treasury FX spread vs reference</span><span class="v">' +
+        pips(tSpread) + " · " + bps(tSpread / refRate * 10000) + "</span></div>";
+    }
+    if (rows) {
+      decomp.innerHTML = '<div class="dhead">Reverse-engineered spread</div>' + rows;
+      decomp.style.display = "grid";
+    } else {
+      decomp.style.display = "none";
+      decomp.innerHTML = "";
+    }
+
+    anEl("anNote").innerHTML =
+      "Fair value uses the live gold spot and an <b>ECB daily</b> USD/" + ccy +
+      " reference (frankfurter.app). Enter your treasury desk’s live USD/" + ccy +
+      " for an exact Path B. Costs are shown versus the live fair mid, in basis points of notional.";
+  }
+
+  ["anBars", "anBar", "anSide", "anCcy", "anUsd", "anLocal", "anFx"].forEach(function (id) {
+    var el = anEl(id);
+    el.addEventListener("input", updateAnalyzer);
+    el.addEventListener("change", updateAnalyzer);
+  });
 
   function flashPrice(dir) {
     var el = document.getElementById("priceBig");
@@ -496,6 +781,7 @@
 
   // --- init ---
   recalc();
+  updateAnalyzer();
   fetchFx();
   fetchPrice();
   setInterval(fetchPrice, REFRESH_MS);

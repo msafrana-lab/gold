@@ -11,6 +11,7 @@ A single-file, static HTML dashboard showing the **real-time gold spot price** w
 - **Live currency conversion**: pick USD, CHF, EUR, GBP, JPY, CNY, CAD, AUD, HKD, SGD or INR — every figure converts using a live FX rate from [frankfurter.app](https://www.frankfurter.app) (ECB reference rates). Falls back to USD if the FX feed is unavailable.
 - Derived prices: per troy ounce, per kilogram, per gram.
 - **Bar calculator**: bar types ordered by most common use (1 oz, 1 kg, 100 g, …). For each it shows the value of one bar, lets you enter how many you hold, and sums a grand total.
+- **Broker Quote Analyzer**: cross-checks a dealer's quote and compares two execution paths — selling directly in the local currency (e.g. CHF) vs. selling in USD and converting separately via a treasury FX desk. It computes the all-in cost of each in basis points, recommends the cheaper path, and **reverse-engineers the spread**: the metal bid-ask vs spot, the USD/CHF rate embedded in the dealer's local-currency quote, and the hidden FX markup (in pips and bps). Settlement currency and bar size are selectable; defaults to the 30 × 1 kg USD-vs-CHF case.
 - **Mobile-first**: on phones the calculator reflows into stacked cards (no sideways scroll) with large, touch-friendly inputs.
 - **Graceful fallback**: if the price feed can't be reached, you can type in the current price manually and the calculator keeps working.
 - No build step, no dependencies, no tracking — just one `index.html`.
