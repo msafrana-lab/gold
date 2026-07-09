@@ -146,6 +146,7 @@
   .an-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   .fld { display: flex; flex-direction: column; gap: 5px; }
   .fld label { font-size: 11px; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); font-weight: 600; }
+  .fld .fhint { font-size: 11.5px; color: var(--muted); font-weight: 400; text-transform: none; letter-spacing: 0; margin-top: 3px; line-height: 1.45; }
   .fld input, .fld select {
     padding: 9px 11px; border: 1px solid var(--line); border-radius: 9px; font-size: 15px;
     font-family: var(--sans); color: var(--ink); background: var(--bg); font-variant-numeric: tabular-nums;
@@ -372,8 +373,9 @@
           <input id="anLocal" type="number" min="0" step="0.01" placeholder="e.g. 68500" inputmode="decimal" />
         </div>
         <div class="fld wide">
-          <label>Treasury FX &mdash; USD/<span class="anCcyL">CHF</span> (for path B)</label>
+          <label>Your USD&rarr;<span class="anCcyL">CHF</span> conversion rate (Path B)</label>
           <input id="anFx" type="number" min="0" step="0.0001" placeholder="live reference" inputmode="decimal" />
+          <span class="fhint">The rate your own treasury / FX desk gives to convert the USD sale proceeds into <span class="anCcyL">CHF</span> (Path B). Leave blank to use the live interbank reference.</span>
         </div>
       </div>
 
