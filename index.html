@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="theme-color" content="#e0426f" />
 <title>Capital Y &middot; Gold Price Dashboard</title>
-<meta name="description" content="Capital Y — real-time gold spot price with a gold-bar value calculator." />
+<meta name="description" content="Capital Y — real-time gold spot price with a gold-bar value calculator and live currency conversion." />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet" />
@@ -22,6 +23,8 @@
     --bg: #ffffff;
     --bg-soft: #f2f2f3;
     --line: #e7e7ea;
+    --up: #2e9e6b;
+    --down: #d94a5a;
     --hero: linear-gradient(95deg, #e0426f 0%, #ec6a66 52%, #ef8452 100%);
     --serif: "Playfair Display", Georgia, "Times New Roman", serif;
     --sans: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -36,85 +39,65 @@
     font-family: var(--sans);
     line-height: 1.55;
     min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
   }
   .wrap { max-width: 1000px; margin: 0 auto; padding: 0 18px; }
 
   /* ---- Brand bar ---- */
-  .brandbar {
-    display: flex; align-items: center; gap: 12px;
-    padding: 16px 0 14px;
-  }
+  .brandbar { display: flex; align-items: center; gap: 12px; padding: 16px 0 14px; }
   .brandbar .logo { flex: none; }
-  .wordmark {
-    font-family: var(--serif); font-size: 22px; font-weight: 700; letter-spacing: .3px; color: var(--ink);
-  }
+  .wordmark { font-family: var(--serif); font-size: 22px; font-weight: 700; letter-spacing: .3px; color: var(--ink); }
   .wordmark .u { color: var(--rose); }
-  .brand-tag {
-    margin-left: auto; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-    color: var(--muted); font-weight: 600;
-  }
+  .brand-tag { margin-left: auto; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); font-weight: 600; }
 
   /* ---- Hero ---- */
-  .hero {
-    background: var(--hero);
-    color: #fff; text-align: center;
-    padding: 46px 20px 50px;
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-  }
-  .hero h1 {
-    font-family: var(--serif); font-weight: 800;
-    font-size: clamp(30px, 5.5vw, 48px); margin: 0 0 8px; letter-spacing: .3px;
-    text-shadow: 0 2px 14px rgba(120, 20, 50, .18);
-  }
+  .hero { background: var(--hero); color: #fff; text-align: center; padding: 46px 20px 50px; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .hero h1 { font-family: var(--serif); font-weight: 800; font-size: clamp(28px, 5.5vw, 48px); margin: 0 0 8px; letter-spacing: .3px; text-shadow: 0 2px 14px rgba(120, 20, 50, .18); }
   .hero p { margin: 0; font-size: 15px; opacity: .96; font-weight: 500; letter-spacing: .2px; }
 
   main { padding: 26px 0 60px; }
-  .banner {
-    display: none; margin: 0 0 20px; padding: 12px 16px; border-radius: 12px;
-    background: #fdf0f3; border: 1px solid #f4c9d5; color: #b23a5b; font-size: 13.5px;
-  }
+  .banner { display: none; margin: 0 0 20px; padding: 12px 16px; border-radius: 12px; background: #fdf0f3; border: 1px solid #f4c9d5; color: #b23a5b; font-size: 13.5px; }
   .banner.show { display: block; }
 
   .grid { display: grid; gap: 20px; grid-template-columns: 1fr; }
   @media (min-width: 780px) { .price-grid { grid-template-columns: 1.15fr 1fr; } }
 
-  .card {
-    background: var(--bg);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    padding: 24px;
-    box-shadow: var(--shadow);
-  }
+  .card { background: var(--bg); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
 
   /* ---- Live price ---- */
   .price-card { display: flex; flex-direction: column; justify-content: center; }
-  .price-label {
-    display: flex; align-items: center; gap: 8px;
-    color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 1.6px; font-weight: 600;
-  }
+  .price-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .price-label { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: 1.6px; font-weight: 600; }
   .dot { width: 9px; height: 9px; border-radius: 50%; background: #c7c7cc; display: inline-block; }
   .dot.live { background: var(--green); box-shadow: 0 0 0 0 rgba(143,166,148,.7); animation: pulse 2s infinite; }
-  @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(143,166,148,.55); }
-    70% { box-shadow: 0 0 0 9px rgba(143,166,148,0); }
-    100% { box-shadow: 0 0 0 0 rgba(143,166,148,0); }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(143,166,148,.55); } 70% { box-shadow: 0 0 0 9px rgba(143,166,148,0); } 100% { box-shadow: 0 0 0 0 rgba(143,166,148,0); } }
+
+  .ccy-wrap { display: inline-flex; align-items: center; gap: 8px; }
+  .ccy-cap { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); font-weight: 600; }
+  .ccy-select {
+    font-family: var(--sans); font-size: 14px; font-weight: 600; color: var(--ink);
+    padding: 7px 30px 7px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2383868d' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 11px center;
   }
-  .price-big {
-    font-family: var(--serif); font-weight: 800;
-    font-size: clamp(38px, 8vw, 58px);
-    color: var(--orange); margin: 8px 0 2px; line-height: 1.05;
-    font-variant-numeric: tabular-nums;
-  }
+  .ccy-select:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 3px rgba(224,66,111,.12); }
+
+  .price-big { font-family: var(--serif); font-weight: 800; font-size: clamp(38px, 8vw, 58px); color: var(--orange); margin: 12px 0 2px; line-height: 1.05; font-variant-numeric: tabular-nums; border-radius: 10px; transition: background-color .5s ease; }
+  .price-big.flash-up { animation: flashUp .8s ease; }
+  .price-big.flash-down { animation: flashDown .8s ease; }
+  @keyframes flashUp { 0% { background: rgba(46,158,107,.18); } 100% { background: transparent; } }
+  @keyframes flashDown { 0% { background: rgba(217,74,90,.18); } 100% { background: transparent; } }
   .price-sub { color: var(--muted); font-size: 13.5px; letter-spacing: .3px; }
+  .delta { display: none; margin-left: 8px; font-weight: 600; font-size: 13px; }
+  .delta.up { display: inline; color: var(--up); }
+  .delta.down { display: inline; color: var(--down); }
+  .ccy-note { display: none; margin-top: 6px; font-size: 12px; color: var(--orange-deep); }
+  .ccy-note.show { display: block; }
   .updated { margin-top: 14px; font-size: 12px; color: var(--muted); }
 
   .stat-list { display: grid; gap: 12px; }
-  .stat {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 13px 16px; background: var(--bg-soft);
-    border-radius: 12px;
-  }
+  .stat { display: flex; justify-content: space-between; align-items: baseline; padding: 13px 16px; background: var(--bg-soft); border-radius: 12px; }
   .stat .k { color: var(--muted); font-size: 13px; font-weight: 500; }
   .stat .v { font-weight: 600; font-variant-numeric: tabular-nums; color: var(--ink); }
 
@@ -125,21 +108,13 @@
 
   .table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   table { width: 100%; border-collapse: collapse; min-width: 580px; }
-  thead th {
-    text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
-    color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 2px solid var(--line);
-  }
+  thead th { text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; padding: 10px 12px; border-bottom: 2px solid var(--line); }
   thead th:first-child, tbody td:first-child { text-align: left; }
   tbody td { padding: 11px 12px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; text-align: right; }
   tbody tr:hover { background: #faf7f8; }
   .bar-name { font-weight: 600; color: var(--ink); }
   .bar-weight { color: var(--muted); font-size: 12px; }
-  input.qty {
-    width: 74px; text-align: right; padding: 8px 10px;
-    background: var(--bg); color: var(--ink);
-    border: 1px solid var(--line); border-radius: 9px; font-size: 14px; font-family: var(--sans);
-    font-variant-numeric: tabular-nums;
-  }
+  input.qty { width: 74px; text-align: right; padding: 8px 10px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; font-size: 15px; font-family: var(--sans); font-variant-numeric: tabular-nums; }
   input.qty:focus { outline: none; border-color: var(--rose); box-shadow: 0 0 0 3px rgba(224,66,111,.12); }
   td.subtotal { font-weight: 600; color: var(--orange-deep); }
 
@@ -148,35 +123,48 @@
   tfoot .total-value { text-align: right; font-family: var(--serif); font-weight: 800; font-size: 30px; color: var(--rose); font-variant-numeric: tabular-nums; }
 
   .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 20px; }
-  button {
-    font-family: var(--sans); font-weight: 600; font-size: 14px;
-    padding: 10px 20px; border-radius: 999px; cursor: pointer; border: none;
-    background: var(--hero); color: #fff; box-shadow: 0 6px 16px rgba(224,66,111,.22);
-  }
+  button { font-family: var(--sans); font-weight: 600; font-size: 14px; padding: 11px 20px; border-radius: 999px; cursor: pointer; border: none; background: var(--hero); color: #fff; box-shadow: 0 6px 16px rgba(224,66,111,.22); }
   button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); box-shadow: none; }
   button:hover { filter: brightness(1.04); }
   button.ghost:hover { background: var(--bg-soft); filter: none; }
 
-  .manual {
-    margin-top: 16px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 12px;
-    display: none; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--muted);
-  }
+  .manual { margin-top: 16px; padding: 14px 16px; border: 1px dashed var(--line); border-radius: 12px; display: none; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
   .manual.show { display: flex; }
-  .manual input {
-    width: 130px; padding: 8px 10px; background: var(--bg); color: var(--ink); font-family: var(--sans);
-    border: 1px solid var(--line); border-radius: 9px; font-size: 14px;
-  }
+  .manual input { width: 130px; padding: 9px 10px; background: var(--bg); color: var(--ink); font-family: var(--sans); border: 1px solid var(--line); border-radius: 9px; font-size: 16px; }
   .manual input:focus { outline: none; border-color: var(--rose); }
 
   /* ---- Footer ---- */
-  footer.foot {
-    background: var(--green); color: #fff;
-    margin-top: 12px; padding: 26px 0;
-  }
+  footer.foot { background: var(--green); color: #fff; margin-top: 12px; padding: 26px 0; }
   footer.foot .wrap { display: flex; flex-wrap: wrap; gap: 8px 18px; align-items: center; justify-content: space-between; }
   footer.foot .fw { font-family: var(--serif); font-weight: 700; font-size: 17px; }
   footer.foot .fnote { font-size: 12px; opacity: .92; }
   footer.foot a { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+
+  /* ---- Mobile: reflow calculator into stacked cards ---- */
+  @media (max-width: 640px) {
+    .wrap { padding: 0 14px; }
+    .card { padding: 18px; }
+    .hero { padding: 38px 16px 40px; }
+    .price-top { flex-wrap: wrap; }
+    .table-scroll { overflow: visible; }
+    #calcTable, #calcTable thead, #calcTable tbody, #calcTable tfoot, #calcTable tr, #calcTable th, #calcTable td { display: block; }
+    #calcTable { min-width: 0; }
+    #calcTable thead { position: absolute; left: -9999px; }
+    #calcTable tbody tr { border: 1px solid var(--line); border-radius: 14px; margin-bottom: 12px; padding: 4px 2px; }
+    #calcTable tbody tr:hover { background: var(--bg); }
+    #calcTable tbody td { display: flex; align-items: center; justify-content: space-between; gap: 14px; text-align: right; border: none; border-bottom: 1px solid var(--bg-soft); padding: 10px 16px; }
+    #calcTable tbody td:last-child { border-bottom: none; }
+    #calcTable tbody td::before { content: attr(data-label); color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+    #calcTable tbody td:first-child { display: block; text-align: left; padding: 12px 16px 6px; }
+    #calcTable tbody td:first-child::before { content: ""; display: none; }
+    input.qty { width: 100px; padding: 11px 12px; font-size: 16px; text-align: right; }
+    tfoot td { padding: 0; }
+    #calcTable tfoot tr { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 4px; }
+    tfoot .total-label, tfoot .total-value { text-align: left; }
+    tfoot .total-value { font-size: 26px; }
+    .toolbar button { flex: 1 1 auto; padding: 14px 18px; }
+    .section-title { flex-direction: column; align-items: flex-start; gap: 4px; }
+  }
 </style>
 </head>
 <body>
@@ -210,20 +198,39 @@
 
   <div class="grid price-grid" style="margin-bottom:20px">
     <div class="card price-card">
-      <div class="price-label">
-        <span id="statusDot" class="dot"></span>
-        <span id="statusText">Loading&hellip;</span>
+      <div class="price-top">
+        <div class="price-label">
+          <span id="statusDot" class="dot"></span>
+          <span id="statusText">Loading&hellip;</span>
+        </div>
+        <label class="ccy-wrap">
+          <span class="ccy-cap">Currency</span>
+          <select id="ccy" class="ccy-select" aria-label="Display currency">
+            <option value="USD">USD $</option>
+            <option value="CHF">CHF Fr</option>
+            <option value="EUR">EUR €</option>
+            <option value="GBP">GBP £</option>
+            <option value="JPY">JPY ¥</option>
+            <option value="CNY">CNY ¥</option>
+            <option value="CAD">CAD $</option>
+            <option value="AUD">AUD $</option>
+            <option value="HKD">HKD $</option>
+            <option value="SGD">SGD $</option>
+            <option value="INR">INR ₹</option>
+          </select>
+        </label>
       </div>
       <div id="priceBig" class="price-big">&mdash;</div>
-      <div class="price-sub">per troy ounce &middot; USD</div>
+      <div class="price-sub">per troy ounce &middot; <span id="ccyLabel">USD</span><span id="delta" class="delta"></span></div>
+      <div id="ccyNote" class="ccy-note"></div>
       <div id="updated" class="updated">&nbsp;</div>
     </div>
 
     <div class="card">
       <div class="stat-list">
-        <div class="stat"><span class="k">Per gram</span><span id="perGram" class="v">&mdash;</span></div>
-        <div class="stat"><span class="k">Per kilogram</span><span id="perKilo" class="v">&mdash;</span></div>
         <div class="stat"><span class="k">Per troy ounce</span><span id="perOz" class="v">&mdash;</span></div>
+        <div class="stat"><span class="k">Per kilogram</span><span id="perKilo" class="v">&mdash;</span></div>
+        <div class="stat"><span class="k">Per gram</span><span id="perGram" class="v">&mdash;</span></div>
       </div>
     </div>
   </div>
@@ -248,7 +255,7 @@
         <tfoot>
           <tr>
             <td class="total-label" colspan="3">Total portfolio value</td>
-            <td class="total-value" id="grandTotal">$0.00</td>
+            <td class="total-value" id="grandTotal">&mdash;</td>
           </tr>
         </tfoot>
       </table>
@@ -272,6 +279,7 @@
     <span class="fw">capital<span style="color:#dff0e6">_</span>y</span>
     <span class="fnote">
       Spot price from <a href="https://gold-api.com" target="_blank" rel="noopener">gold-api.com</a>,
+      FX from <a href="https://www.frankfurter.app" target="_blank" rel="noopener">frankfurter.app</a>,
       refreshed live. For information only &mdash; not investment advice.
     </span>
   </div>
@@ -282,49 +290,64 @@
   "use strict";
 
   var OZ_IN_GRAMS = 31.1034768; // troy ounce
-  var API_URL = "https://api.gold-api.com/price/XAU";
-  var REFRESH_MS = 60000; // auto-refresh every 60s
+  var PRICE_URL = "https://api.gold-api.com/price/XAU";
+  var FX_URL = "https://api.frankfurter.app/latest?from=USD";
+  var REFRESH_MS = 60000; // gold price auto-refresh every 60s
 
-  // Standard gold bar types, defined by weight in grams.
+  // Standard gold bar types, ordered by most common use (1 oz, then 1 kg, ...).
   var BARS = [
+    { name: "1 oz bar",  grams: OZ_IN_GRAMS },
+    { name: "1 kg bar",  grams: 1000 },
+    { name: "100 g bar", grams: 100 },
+    { name: "10 g bar",  grams: 10 },
+    { name: "50 g bar",  grams: 50 },
     { name: "1 g bar",   grams: 1 },
     { name: "5 g bar",   grams: 5 },
-    { name: "10 g bar",  grams: 10 },
     { name: "20 g bar",  grams: 20 },
-    { name: "1 oz bar",  grams: OZ_IN_GRAMS },
-    { name: "50 g bar",  grams: 50 },
-    { name: "100 g bar", grams: 100 },
     { name: "250 g bar", grams: 250 },
     { name: "500 g bar", grams: 500 },
-    { name: "1 kg bar",  grams: 1000 },
     { name: "400 oz Good Delivery", grams: 400 * OZ_IN_GRAMS }
   ];
 
-  var pricePerOz = null; // USD per troy ounce
+  var pricePerOz = null;      // spot, USD per troy ounce (always stored in USD)
+  var lastPriceUsd = null;    // previous spot, for the up/down delta
+  var fxRates = { USD: 1 };   // USD -> currency
+  var selectedCcy = "USD";
 
-  function fmtUSD(n) {
-    if (n == null || isNaN(n)) return "—";
-    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  // --- formatting ---
+  function rateFor(ccy) { return ccy === "USD" ? 1 : fxRates[ccy]; }
+  function activeCcy() { return rateFor(selectedCcy) == null ? "USD" : selectedCcy; }
+
+  function money(usd) {
+    if (usd == null || isNaN(usd)) return "—";
+    var ccy = activeCcy();
+    var val = usd * (rateFor(ccy) || 1);
+    try {
+      return new Intl.NumberFormat("en-US", { style: "currency", currency: ccy }).format(val);
+    } catch (e) {
+      return val.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " " + ccy;
+    }
   }
   function fmtWeight(grams) {
     if (grams >= 1000) return (grams / 1000).toLocaleString("en-US", { maximumFractionDigits: 3 }) + " kg";
     return grams.toLocaleString("en-US", { maximumFractionDigits: 4 }) + " g";
   }
 
+  // --- build calculator rows ---
   var body = document.getElementById("calcBody");
   BARS.forEach(function (bar, i) {
     var tr = document.createElement("tr");
     tr.innerHTML =
       '<td><span class="bar-name">' + bar.name + '</span><br>' +
         '<span class="bar-weight">' + fmtWeight(bar.grams) + '</span></td>' +
-      '<td data-role="value" id="val-' + i + '">—</td>' +
-      '<td><input class="qty" type="number" min="0" step="1" value="0" ' +
+      '<td data-label="Value per bar" id="val-' + i + '">—</td>' +
+      '<td data-label="Quantity"><input class="qty" type="number" min="0" step="1" value="0" ' +
         'inputmode="numeric" data-idx="' + i + '" aria-label="Quantity of ' + bar.name + '"></td>' +
-      '<td class="subtotal" id="sub-' + i + '">' + fmtUSD(0) + '</td>';
+      '<td class="subtotal" data-label="Subtotal" id="sub-' + i + '">' + money(0) + '</td>';
     body.appendChild(tr);
   });
 
-  function barValue(bar) {
+  function barValueUsd(bar) {
     if (pricePerOz == null) return null;
     return (bar.grams / OZ_IN_GRAMS) * pricePerOz;
   }
@@ -332,49 +355,95 @@
   function recalc() {
     var total = 0;
     BARS.forEach(function (bar, i) {
-      var val = barValue(bar);
-      document.getElementById("val-" + i).textContent = val == null ? "—" : fmtUSD(val);
+      var val = barValueUsd(bar);
+      document.getElementById("val-" + i).textContent = val == null ? "—" : money(val);
       var qtyEl = body.querySelector('input[data-idx="' + i + '"]');
       var qty = parseFloat(qtyEl.value) || 0;
       var sub = val == null ? 0 : val * qty;
-      document.getElementById("sub-" + i).textContent = fmtUSD(sub);
+      document.getElementById("sub-" + i).textContent = money(sub);
       total += sub;
     });
-    document.getElementById("grandTotal").textContent = fmtUSD(total);
+    document.getElementById("grandTotal").textContent = pricePerOz == null ? "—" : money(total);
+  }
+
+  // Re-render every money figure on the page (after a price OR currency change).
+  function renderAll() {
+    document.getElementById("priceBig").textContent = money(pricePerOz);
+    document.getElementById("perOz").textContent = money(pricePerOz);
+    document.getElementById("perGram").textContent = money(pricePerOz == null ? null : pricePerOz / OZ_IN_GRAMS);
+    document.getElementById("perKilo").textContent = money(pricePerOz == null ? null : (pricePerOz / OZ_IN_GRAMS) * 1000);
+    document.getElementById("ccyLabel").textContent = activeCcy();
+
+    var note = document.getElementById("ccyNote");
+    if (selectedCcy !== "USD" && rateFor(selectedCcy) == null) {
+      note.className = "ccy-note show";
+      note.textContent = "Live exchange rate for " + selectedCcy + " unavailable — showing USD.";
+    } else {
+      note.className = "ccy-note";
+      note.textContent = "";
+    }
+    recalc();
+  }
+
+  function flashPrice(dir) {
+    var el = document.getElementById("priceBig");
+    var cls = dir > 0 ? "flash-up" : "flash-down";
+    el.classList.remove("flash-up", "flash-down");
+    // force reflow so the animation restarts
+    void el.offsetWidth;
+    el.classList.add(cls);
+  }
+
+  function showDelta(diffUsd) {
+    var el = document.getElementById("delta");
+    if (!diffUsd) { return; } // keep last shown delta; no change this tick
+    var up = diffUsd > 0;
+    el.className = "delta " + (up ? "up" : "down");
+    el.textContent = (up ? "▲ +" : "▼ −") + money(Math.abs(diffUsd)).replace(/^[^\d-]*/, "");
   }
 
   function applyPrice(oz) {
+    if (lastPriceUsd != null && oz !== lastPriceUsd) {
+      var diff = oz - lastPriceUsd;
+      flashPrice(diff);
+      showDelta(diff);
+    }
+    lastPriceUsd = oz;
     pricePerOz = oz;
-    document.getElementById("priceBig").textContent = fmtUSD(oz);
-    document.getElementById("perOz").textContent = fmtUSD(oz);
-    document.getElementById("perGram").textContent = fmtUSD(oz / OZ_IN_GRAMS);
-    document.getElementById("perKilo").textContent = fmtUSD((oz / OZ_IN_GRAMS) * 1000);
-    recalc();
+    renderAll();
   }
 
   function setStatus(state, text) {
     document.getElementById("statusDot").className = "dot" + (state === "live" ? " live" : "");
     document.getElementById("statusText").textContent = text;
   }
-
   function showBanner(msg) {
     var b = document.getElementById("banner");
     if (!msg) { b.className = "banner"; b.textContent = ""; return; }
-    b.className = "banner show";
-    b.textContent = msg;
+    b.className = "banner show"; b.textContent = msg;
   }
-
   function showManual(show) {
     document.getElementById("manual").className = "manual" + (show ? " show" : "");
   }
 
-  function fetchPrice() {
-    setStatus("", "Fetching…");
-    fetch(API_URL, { cache: "no-store" })
-      .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
+  // --- live FX rates (USD -> others) ---
+  function fetchFx() {
+    fetch(FX_URL, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (data) {
+        if (data && data.rates) {
+          fxRates = data.rates;
+          fxRates.USD = 1;
+          renderAll();
+        }
       })
+      .catch(function () { /* keep whatever rates we have; USD always works */ });
+  }
+
+  // --- live gold price ---
+  function fetchPrice() {
+    fetch(PRICE_URL, { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (data) {
         var price = Number(data && data.price);
         if (!price || isNaN(price)) throw new Error("bad payload");
@@ -383,19 +452,29 @@
         showBanner("");
         showManual(false);
         var when = data.updatedAt ? new Date(data.updatedAt) : new Date();
-        document.getElementById("updated").textContent = "Updated " + when.toLocaleString();
+        document.getElementById("updated").textContent = "Updated " + when.toLocaleString() + " · refreshes every 60s";
       })
       .catch(function (err) {
-        setStatus("", "Offline");
-        showBanner("Live price feed unavailable (" + err.message + "). You can enter the price manually below.");
-        showManual(true);
+        if (pricePerOz != null) {
+          // Keep showing the last good price rather than blanking out.
+          setStatus("", "Reconnecting… (showing last price)");
+        } else {
+          setStatus("", "Offline");
+          showBanner("Live price feed unavailable (" + err.message + "). You can enter the price manually below.");
+          showManual(true);
+        }
       });
   }
 
+  // --- controls ---
   body.addEventListener("input", function (e) {
     if (e.target && e.target.classList.contains("qty")) recalc();
   });
-  document.getElementById("refreshBtn").addEventListener("click", fetchPrice);
+  document.getElementById("ccy").addEventListener("change", function (e) {
+    selectedCcy = e.target.value;
+    renderAll();
+  });
+  document.getElementById("refreshBtn").addEventListener("click", function () { fetchPrice(); fetchFx(); });
   document.getElementById("resetBtn").addEventListener("click", function () {
     body.querySelectorAll("input.qty").forEach(function (el) { el.value = 0; });
     recalc();
@@ -409,7 +488,9 @@
     }
   });
 
+  // --- init ---
   recalc();
+  fetchFx();
   fetchPrice();
   setInterval(fetchPrice, REFRESH_MS);
 })();

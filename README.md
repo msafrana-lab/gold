@@ -6,11 +6,13 @@ A single-file, static HTML dashboard showing the **real-time gold spot price** w
 
 ## Features
 
-- **Live spot price** (USD per troy ounce) from [gold-api.com](https://gold-api.com) — free, no API key required.
-- Auto-refreshes every 60 seconds, plus a manual **Refresh** button.
-- Derived prices: per gram, per kilogram, per troy ounce.
-- **Bar calculator**: for each standard bar type (1 g → 1 kg and a 400 oz Good Delivery bar) it shows the value of one bar, lets you enter how many you hold, and sums a grand total.
-- **Graceful fallback**: if the live feed can't be reached, you can type in the current price manually and the calculator keeps working.
+- **Live spot price** (per troy ounce) from [gold-api.com](https://gold-api.com) — free, no API key required.
+- Auto-refreshes every 60 seconds (keeps showing the last good price if a fetch fails), plus a manual **Refresh** button and an up/down change flash.
+- **Live currency conversion**: pick USD, CHF, EUR, GBP, JPY, CNY, CAD, AUD, HKD, SGD or INR — every figure converts using a live FX rate from [frankfurter.app](https://www.frankfurter.app) (ECB reference rates). Falls back to USD if the FX feed is unavailable.
+- Derived prices: per troy ounce, per kilogram, per gram.
+- **Bar calculator**: bar types ordered by most common use (1 oz, 1 kg, 100 g, …). For each it shows the value of one bar, lets you enter how many you hold, and sums a grand total.
+- **Mobile-first**: on phones the calculator reflows into stacked cards (no sideways scroll) with large, touch-friendly inputs.
+- **Graceful fallback**: if the price feed can't be reached, you can type in the current price manually and the calculator keeps working.
 - No build step, no dependencies, no tracking — just one `index.html`.
 
 ## Run locally
