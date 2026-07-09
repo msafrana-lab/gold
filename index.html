@@ -789,17 +789,25 @@
   function fxSources() {
     var list = [];
     if (FX_API_KEY) {
-      var syms = FX_CCYS.map(function (c) { return "USD/" + c; }).join(",");
+      // Twelve Data's free plan charges 1 credit PER symbol (8/min, 800/day), so
+      // fetch only the currency in view (default CHF) — one credit per call.
+      var want = (selectedCcy && selectedCcy !== "USD") ? selectedCcy : "CHF";
       list.push({
-        url: "https://api.twelvedata.com/exchange_rate?symbol=" + encodeURIComponent(syms) + "&apikey=" + FX_API_KEY,
+        url: "https://api.twelvedata.com/exchange_rate?symbol=USD/" + want + "&apikey=" + FX_API_KEY,
         label: "live · Twelve Data", live: true,
         parse: function (d) {
           if (!d) return null;
           var r = {};
-          Object.keys(d).forEach(function (k) {
-            if (k.indexOf("USD/") === 0 && d[k] && d[k].rate) r[k.slice(4)] = Number(d[k].rate);
-          });
-          return Object.keys(r).length ? r : null;
+          if (d.rate && d.symbol && d.symbol.indexOf("USD/") === 0) {
+            // single-symbol shape: { symbol:"USD/CHF", rate:0.80 }
+            r[d.symbol.slice(4).toUpperCase()] = Number(d.rate);
+          } else {
+            // multi-symbol shape: { "USD/CHF": { rate:0.80 }, ... }
+            Object.keys(d).forEach(function (k) {
+              if (k.indexOf("USD/") === 0 && d[k] && d[k].rate) r[k.slice(4).toUpperCase()] = Number(d[k].rate);
+            });
+          }
+          return (r[want] != null) ? r : null;
         },
         when: function () { return "just now"; }
       });
@@ -837,6 +845,9 @@
     if (!raw) return;
     lastRawFx = raw; lastRawMeta = meta;
     var out = {};
+    // Start from the ECB anchor so every currency has a value (the ones the live
+    // feed doesn't return stay at their daily rate); then overlay the live rates.
+    Object.keys(fxAnchor).forEach(function (k) { out[k] = fxAnchor[k]; });
     Object.keys(raw).forEach(function (k) {
       var K = k.toUpperCase();
       var v = Number(raw[k]);
@@ -873,7 +884,7 @@
         .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
         .then(function (d) {
           var rates = s.parse(d);
-          if (!rates || rates.CHF == null) throw new Error("no usable rates");
+          if (!rates || !Object.keys(rates).length) throw new Error("no usable rates");
           setFxRates(rates, { label: s.label, asof: s.when(d), live: s.live });
         })
         .catch(function () { tryNext(); });
@@ -952,6 +963,7 @@
   document.getElementById("ccy").addEventListener("change", function (e) {
     selectedCcy = e.target.value;
     renderAll();
+    if (FX_API_KEY && !document.hidden) fetchFx(); // fetch the newly-selected currency live
   });
   document.getElementById("refreshBtn").addEventListener("click", function () { fetchLiveQuote(); });
   document.getElementById("resetBtn").addEventListener("click", function () {
